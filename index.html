@@ -1006,7 +1006,6 @@ function initInput(){
 function ptrDown(row,col){
   if(!isValidCell(row,col))return;
   hideMeter();
-  const comp=getComponentAt(row,col);
 
   // Multimeter
   if(GS.toolMode==='meter'){
@@ -1016,16 +1015,7 @@ function ptrDown(row,col){
     return;
   }
 
-  // Toggle schakelaar
-  if(comp&&comp.type==='schakelaar'){
-    comp.state=!comp.state;clearPowerState();
-    if(isStoringMode()){GS.actionCount++;updateActionCounter()}
-    tutorialStepCheck();
-    return;
-  }
-
-  if(comp)return;
-
+  // Start drag from ANY cell, including components
   GS.isDrawing=true;
   GS.wireStart={row,col};
   GS.previewPath=[];
@@ -1037,8 +1027,19 @@ function ptrMove(row,col){
 }
 
 function ptrUp(){
-  if(GS.isDrawing&&GS.wireStart&&GS.previewPath.length){
-    applyPath();
+  if(GS.isDrawing&&GS.wireStart){
+    if(GS.previewPath.length>0){
+      // Drag happened — apply the wire path
+      applyPath();
+    }else{
+      // Click without drag — toggle schakelaar
+      const comp=getComponentAt(GS.wireStart.row,GS.wireStart.col);
+      if(comp&&comp.type==='schakelaar'){
+        comp.state=!comp.state;clearPowerState();
+        if(isStoringMode()){GS.actionCount++;updateActionCounter()}
+        tutorialStepCheck();
+      }
+    }
   }
   GS.isDrawing=false;GS.wireStart=null;GS.previewPath=[];
 }
@@ -1236,29 +1237,32 @@ function tutorialStepCheck(){
     const lamp=GS.components.find(c=>c.type==='lamp');
     if(kast&&lamp){
       const reach=bfsColor(kast.row,kast.col,W_BROWN,['lamp']);
-      if(reach.has(ck(lamp.row,lamp.col))){GS.tutorialStep++;renderTutorialStep()}
+      if(reach.has(ck(lamp.row,lamp.col))){GS.tutorialStep++;renderTutorialStep();autoSelectTutorialTool()}
     }
   }else if(step.action==='drawBlue'){
     const kast=GS.components.find(c=>c.type==='groepenkast');
     const lamp=GS.components.find(c=>c.type==='lamp');
     if(kast&&lamp){
       const reach=bfsColor(kast.row,kast.col,W_BLUE,['lamp']);
-      if(reach.has(ck(lamp.row,lamp.col))){GS.tutorialStep++;renderTutorialStep()}
+      if(reach.has(ck(lamp.row,lamp.col))){GS.tutorialStep++;renderTutorialStep();autoSelectTutorialTool()}
     }
   }
   // 'test' step is handled by testCircuit
+}
+
+function autoSelectTutorialTool(){
+  const lvl=currentLevel();
+  if(GS.tutorialStep<lvl.tutorialSteps.length){
+    const step=lvl.tutorialSteps[GS.tutorialStep];
+    if(step.targetWire)selectWire(step.targetWire);
+  }
 }
 
 function advanceTutorial(){
   if(!isTutorialLevel())return;
   GS.tutorialStep++;
   renderTutorialStep();
-  // Auto-select the right tool for next step
-  const lvl=currentLevel();
-  if(GS.tutorialStep<lvl.tutorialSteps.length){
-    const step=lvl.tutorialSteps[GS.tutorialStep];
-    if(step.targetWire)selectWire(step.targetWire);
-  }
+  autoSelectTutorialTool();
 }
 
 // ================================================
