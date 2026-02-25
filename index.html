@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Circuit City</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700&family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0e1a;color:#e2e8f0;font-family:'Exo 2',sans-serif;display:grid;grid-template-rows:52px 1fr 58px;height:100vh;overflow:hidden;user-select:none;-webkit-user-select:none}
+
+/* TOP BAR */
+#top-bar{background:#111827;display:flex;align-items:center;padding:0 20px;gap:16px;border-bottom:1px solid #1e293b;z-index:10}
+#logo{font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:#fbbf24;text-shadow:0 0 20px rgba(251,191,36,0.5);white-space:nowrap}
+.top-stat{font-family:'Share Tech Mono',monospace;font-size:12px;color:#94a3b8;white-space:nowrap}
+.top-stat span{color:#fbbf24;font-weight:700}
+#power-state{transition:color .3s}
+#power-state.on{color:#22c55e;text-shadow:0 0 8px rgba(34,197,94,0.5)}
+.mode-badge{font-family:'Orbitron',sans-serif;font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:1px}
+.mode-badge.aanleg{background:#fbbf24;color:#0a0e1a}
+.mode-badge.storing{background:#ef4444;color:#fff}
+.spacer{flex:1}
+
+/* MAIN */
+#main-content{display:grid;grid-template-columns:250px 1fr;overflow:hidden}
+
+/* SIDEBAR */
+#sidebar{background:#111827;padding:16px;border-right:1px solid #1e293b;overflow-y:auto;display:flex;flex-direction:column;gap:12px;font-size:13px}
+#sidebar h3{font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;color:#fbbf24;margin-bottom:2px}
+#assignment-desc{line-height:1.5;color:#cbd5e1}
+#concept-box{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px}
+#concept-box h4{font-family:'Orbitron',sans-serif;font-size:10px;font-weight:500;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+#concept-text{font-size:12px;line-height:1.5;color:#94a3b8}
+#wire-legend{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px}
+#wire-legend h4{font-family:'Orbitron',sans-serif;font-size:10px;font-weight:500;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.legend-item{display:flex;align-items:center;gap:6px;padding:2px 0;color:#94a3b8;font-size:11px}
+.legend-swatch{width:14px;height:6px;border-radius:2px;flex-shrink:0}
+.legend-swatch.earth{background:repeating-linear-gradient(90deg,#22c55e 0,#22c55e 3px,#facc15 3px,#facc15 6px)}
+#star-display{display:flex;gap:6px;justify-content:center;padding:4px 0}
+.star{font-size:24px;color:#334155;transition:color .4s,text-shadow .4s}
+.star.earned{color:#fbbf24;text-shadow:0 0 12px rgba(251,191,36,0.6)}
+#wire-target{font-family:'Share Tech Mono',monospace;font-size:11px;color:#64748b;text-align:center}
+#action-counter{font-family:'Share Tech Mono',monospace;font-size:12px;color:#f97316;text-align:center;display:none}
+
+/* GAME AREA */
+#game-area{display:flex;align-items:center;justify-content:center;padding:12px;background:#0a0e1a;overflow:hidden}
+#game-canvas{touch-action:none;-webkit-touch-callout:none;cursor:crosshair;border-radius:4px}
+
+/* MULTIMETER TOOLTIP */
+#multimeter-tip{display:none;position:fixed;background:#1e293b;border:1px solid #475569;border-radius:8px;padding:10px 14px;z-index:50;font-family:'Share Tech Mono',monospace;font-size:12px;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,0.5)}
+#multimeter-tip.show{display:block}
+.mm-row{display:flex;align-items:center;gap:6px;padding:2px 0}
+.mm-swatch{width:10px;height:4px;border-radius:1px}
+.mm-ok{color:#22c55e}
+.mm-fail{color:#ef4444}
+
+/* BOTTOM BAR */
+#bottom-bar{background:#111827;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;border-top:1px solid #1e293b;flex-wrap:nowrap;overflow-x:auto}
+.tool-btn{font-family:'Share Tech Mono',monospace;font-size:11px;background:#1e293b;color:#94a3b8;border:1px solid #334155;padding:6px 10px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:4px}
+.tool-btn:hover{background:#334155;color:#e2e8f0}
+.tool-btn.active{box-shadow:0 0 10px rgba(251,191,36,0.3)}
+.wire-swatch{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:1px solid transparent}
+.tool-btn.active .wire-swatch{box-shadow:0 0 6px currentColor}
+#btn-brown.active{background:#8B4513;color:#fff;border-color:#8B4513}
+#btn-blue.active{background:#2563eb;color:#fff;border-color:#2563eb}
+#btn-green.active{background:#16a34a;color:#fff;border-color:#16a34a}
+#btn-black.active{background:#334155;color:#e2e8f0;border-color:#64748b}
+#btn-eraser.active{background:#f97316;color:#fff;border-color:#f97316}
+#btn-meter.active{background:#a855f7;color:#fff;border-color:#a855f7}
+.separator{width:1px;height:24px;background:#334155;flex-shrink:0}
+.level-btn{font-family:'Share Tech Mono',monospace;font-size:10px;min-width:26px;height:26px;background:#1e293b;color:#64748b;border:1px solid #334155;border-radius:4px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.level-btn:hover{background:#334155;color:#e2e8f0}
+.level-btn.current{background:#fbbf24;color:#0a0e1a;border-color:#fbbf24}
+.level-btn.current.storing-level{background:#ef4444;color:#fff;border-color:#ef4444}
+.level-btn.completed{border-color:#22c55e;color:#22c55e}
+.level-btn.locked{opacity:.3;cursor:not-allowed}
+#btn-test{font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;padding:7px 16px;border-radius:6px;border:none;cursor:pointer;box-shadow:0 0 12px rgba(34,197,94,0.3);transition:all .15s;white-space:nowrap;flex-shrink:0}
+#btn-test:hover{box-shadow:0 0 20px rgba(34,197,94,0.5);transform:scale(1.03)}
+
+/* MODAL */
+#modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;animation:fadeIn .2s ease}
+#modal-overlay.show{display:flex}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+#modal-box{background:#111827;border:1px solid #1e293b;border-radius:16px;padding:28px;max-width:400px;width:90%;text-align:center;animation:modalSlide .3s ease}
+@keyframes modalSlide{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+#modal-box h2{font-family:'Orbitron',sans-serif;font-size:20px;margin-bottom:10px}
+#modal-box.success h2{color:#22c55e}
+#modal-box.failure h2{color:#ef4444}
+#modal-stars{font-size:36px;margin:10px 0}
+#modal-stars .star-on{color:#fbbf24;text-shadow:0 0 16px rgba(251,191,36,0.7)}
+#modal-stars .star-off{color:#334155}
+#modal-message{font-size:14px;color:#94a3b8;margin-bottom:6px;line-height:1.5}
+#modal-stats{font-family:'Share Tech Mono',monospace;font-size:12px;color:#64748b;margin-bottom:16px}
+.modal-btn{font-family:'Share Tech Mono',monospace;font-size:13px;padding:8px 20px;border-radius:8px;border:1px solid #334155;cursor:pointer;transition:all .15s;margin:0 4px}
+.modal-btn-primary{background:#fbbf24;color:#0a0e1a;border-color:#fbbf24;font-weight:700}
+.modal-btn-primary:hover{background:#f59e0b}
+.modal-btn-secondary{background:#1e293b;color:#e2e8f0}
+.modal-btn-secondary:hover{background:#334155}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  body{grid-template-rows:44px 1fr 50px}
+  #top-bar{padding:0 10px;gap:8px}
+  #logo{font-size:14px}
+  #main-content{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  #sidebar{border-right:none;border-bottom:1px solid #1e293b;max-height:90px;padding:8px 12px;gap:6px;flex-direction:row;flex-wrap:wrap;align-items:flex-start}
+  #concept-box,#wire-legend{display:none}
+  #star-display{padding:0}
+  .star{font-size:18px}
+  #game-area{padding:6px}
+  #bottom-bar{gap:4px;padding:0 6px}
+  .tool-btn{padding:5px 6px;font-size:10px}
+  .wire-swatch{width:8px;height:8px}
+  .level-btn{min-width:22px;height:22px;font-size:9px}
+  #btn-test{padding:5px 10px;font-size:10px}
+  .separator{height:18px}
+}
+</style>
+</head>
+<body>
+<div id="top-bar">
+  <div id="logo">Circuit City</div>
+  <div class="top-stat">Level <span id="level-num">1</span></div>
+  <span id="mode-badge" class="mode-badge aanleg">AANLEG</span>
+  <div class="top-stat">Draden: <span id="wire-count">0</span></div>
+  <div class="top-stat">Stroom: <span id="power-state">UIT</span></div>
+  <div class="spacer"></div>
+</div>
+<div id="main-content">
+  <div id="sidebar">
+    <div>
+      <h3 id="assignment-title"></h3>
+      <p id="assignment-desc"></p>
+    </div>
+    <div id="concept-box"><h4>Leerconcept</h4><p id="concept-text"></p></div>
+    <div id="wire-legend">
+      <h4>Draadkleuren</h4>
+      <div class="legend-item"><span class="legend-swatch" style="background:#8B4513"></span>Bruin = Fase (L)</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:#2563eb"></span>Blauw = Nul (N)</div>
+      <div class="legend-item"><span class="legend-swatch earth"></span>Groen/Geel = Aarde (PE)</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:#2d2d3d;border:1px solid #475569"></span>Zwart = Schakel (T)</div>
+    </div>
+    <div id="star-display"><span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star">&#9733;</span></div>
+    <div id="wire-target"></div>
+    <div id="action-counter"></div>
+  </div>
+  <div id="game-area"><canvas id="game-canvas"></canvas></div>
+</div>
+<div id="bottom-bar">
+  <button class="tool-btn active" id="btn-brown"><span class="wire-swatch" style="background:#8B4513"></span>L</button>
+  <button class="tool-btn" id="btn-blue"><span class="wire-swatch" style="background:#2563eb"></span>N</button>
+  <button class="tool-btn" id="btn-green"><span class="wire-swatch" style="background:#22c55e"></span>PE</button>
+  <button class="tool-btn" id="btn-black"><span class="wire-swatch" style="background:#2d2d3d;border-color:#475569"></span>T</button>
+  <div class="separator"></div>
+  <button class="tool-btn" id="btn-eraser">Gum</button>
+  <button class="tool-btn" id="btn-meter" style="display:none">Meter</button>
+  <button class="tool-btn" id="btn-reset">Reset</button>
+  <div class="separator"></div>
+  <div id="level-buttons"></div>
+  <div class="separator"></div>
+  <button id="btn-test">Test Circuit</button>
+</div>
+<div id="modal-overlay">
+  <div id="modal-box"><h2 id="modal-title"></h2><div id="modal-stars"></div><p id="modal-message"></p><p id="modal-stats"></p><div id="modal-actions"></div></div>
+</div>
+<div id="multimeter-tip"></div>
+
+<script>
+// ================================================
+// 1. CONSTANTS
+// ================================================
+const W_NONE=0, W_BROWN=1, W_BLUE=2, W_GREEN=4, W_BLACK=8;
+const ALL_WIRES=[W_BROWN,W_BLUE,W_GREEN,W_BLACK];
+const WIRE_META={
+  [W_BROWN]:{name:'Bruin (Fase)',key:'brown',hex:'#8B4513',glow:'#d97706',label:'L',btnId:'btn-brown'},
+  [W_BLUE]:{name:'Blauw (Nul)',key:'blue',hex:'#2563eb',glow:'#60a5fa',label:'N',btnId:'btn-blue'},
+  [W_GREEN]:{name:'Groen/Geel (Aarde)',key:'green',hex:'#22c55e',glow:'#4ade80',label:'PE',btnId:'btn-green'},
+  [W_BLACK]:{name:'Zwart (Schakel)',key:'black',hex:'#475569',glow:'#94a3b8',label:'T',btnId:'btn-black'}
+};
+const DIRS=[[-1,0],[1,0],[0,-1],[0,1]];
+
+// ================================================
+// 2. LEVEL DATA
+// ================================================
+const LEVELS=[
+  // --- AANLEG LEVELS ---
+  {id:1,name:'Fase en Nul',mode:'aanleg',gridWidth:8,gridHeight:6,
+   description:'Verbind de groepenkast met de lamp. Leg een bruine draad (fase) HEEN en een blauwe draad (nul) TERUG.',
+   concept:'Elektriciteit heeft altijd twee paden nodig: de fase (bruin) brengt stroom naar de lamp, de nul (blauw) voert de stroom terug naar de groepenkast. Zonder retourpad geen stroom!',
+   availableWires:[W_BROWN,W_BLUE],requireEarth:false,
+   components:[{type:'groepenkast',row:2,col:0,state:true},{type:'lamp',row:2,col:7,state:false}],
+   starThresholds:{three:12,two:16}},
+
+  {id:2,name:'De Aarde',mode:'aanleg',gridWidth:8,gridHeight:6,
+   description:'Verbind de groepenkast met de lamp, nu ook met een groen-gele aarddraad voor veiligheid.',
+   concept:'De aarddraad (groen/geel) is een veiligheidsverbinding. Bij een storing leidt de aarde gevaarlijke stroom veilig af. Zonder aarde kun je een schok krijgen!',
+   availableWires:[W_BROWN,W_BLUE,W_GREEN],requireEarth:true,
+   components:[{type:'groepenkast',row:2,col:0,state:true},{type:'lamp',row:2,col:7,state:false}],
+   starThresholds:{three:18,two:24}},
+
+  {id:3,name:'De Schakelaar',mode:'aanleg',gridWidth:10,gridHeight:7,
+   description:'Verbind alles via de schakelaar. Bruin naar schakelaar, ZWART van schakelaar naar lamp, blauw en aarde direct naar de lamp. Zet de schakelaar aan!',
+   concept:'Een schakelaar onderbreekt de fase. Bruin gaat NAAR de schakelaar, een ZWARTE schakeldraad gaat van schakelaar naar lamp. Zo kun je het licht aan- en uitzetten.',
+   availableWires:[W_BROWN,W_BLUE,W_GREEN,W_BLACK],requireEarth:true,
+   components:[{type:'groepenkast',row:3,col:0,state:true},{type:'schakelaar',row:1,col:4,state:false},{type:'lamp',row:3,col:9,state:false}],
+   starThresholds:{three:22,two:30}},
+
+  {id:4,name:'De Centraaldoos',mode:'aanleg',gridWidth:10,gridHeight:8,
+   description:'Leid de draden van de groepenkast naar de centraaldoos, en vandaar naar twee lampen.',
+   concept:'In een echt huis gaan draden via een centraaldoos (aftakdoos) waar ze splitsen naar meerdere aansluitpunten. De centraaldoos is het knooppunt van de bedrading.',
+   availableWires:[W_BROWN,W_BLUE,W_GREEN],requireEarth:true,
+   components:[{type:'groepenkast',row:3,col:0,state:true},{type:'centraaldoos',row:3,col:4,state:true},{type:'lamp',row:1,col:9,state:false},{type:'lamp',row:5,col:9,state:false}],
+   starThresholds:{three:30,two:40}},
+
+  {id:5,name:'Schakelaar via Centraaldoos',mode:'aanleg',gridWidth:11,gridHeight:8,
+   description:'Verbind alles via de centraaldoos. De schakelaar wordt ook via de centraaldoos aangesloten.',
+   concept:'In een echte installatie lopen alle draden via de centraaldoos. Bruin gaat via de centraaldoos naar de schakelaar, de zwarte schakeldraad terug via de centraaldoos naar de lamp.',
+   availableWires:[W_BROWN,W_BLUE,W_GREEN,W_BLACK],requireEarth:true,
+   components:[{type:'groepenkast',row:3,col:0,state:true},{type:'centraaldoos',row:3,col:5,state:true},{type:'schakelaar',row:5,col:5,state:false},{type:'lamp',row:1,col:10,state:false}],
+   starThresholds:{three:28,two:38}},
+
+  {id:6,name:'Het Stopcontact',mode:'aanleg',gridWidth:8,gridHeight:6,
+   description:'Sluit een wandcontactdoos (stopcontact) aan. Een stopcontact heeft fase, nul EN aarde nodig.',
+   concept:'Een wandcontactdoos is eenvoudiger dan een lamp met schakelaar. Je hebt alleen bruin (fase), blauw (nul) en groen/geel (aarde) nodig. Geen zwarte schakeldraad!',
+   availableWires:[W_BROWN,W_BLUE,W_GREEN],requireEarth:true,
+   components:[{type:'groepenkast',row:2,col:0,state:true},{type:'wandcontactdoos',row:2,col:7,state:false}],
+   starThresholds:{three:18,two:24}},
+
+  {id:7,name:'Twee Groepen',mode:'aanleg',gridWidth:12,gridHeight:9,
+   description:'Verbind een lichtgroep (met schakelaar en lamp) en een stopcontactgroep (wandcontactdoos). Beide via de centraaldoos!',
+   concept:'In een echt huis heeft de groepenkast meerdere groepen. Licht en stopcontacten zitten op aparte groepen, elk met een eigen automaat in de kast.',
+   availableWires:[W_BROWN,W_BLUE,W_GREEN,W_BLACK],requireEarth:true,
+   components:[{type:'groepenkast',row:4,col:0,state:true},{type:'centraaldoos',row:4,col:5,state:true},{type:'schakelaar',row:2,col:5,state:false},{type:'lamp',row:2,col:11,state:false},{type:'wandcontactdoos',row:6,col:11,state:false}],
+   starThresholds:{three:42,two:56}},
+
+  {id:8,name:'Complete Installatie',mode:'aanleg',gridWidth:14,gridHeight:10,
+   description:'Bouw een complete huisinstallatie: groepenkast, centraaldoos, schakelaar, twee lampen parallel en een wandcontactdoos.',
+   concept:'Dit is hoe een echte elektricien werkt. De groepenkast verdeelt stroom, de centraaldoos splitst draden, de schakelaar bedient lampen, en het stopcontact krijgt een directe verbinding.',
+   availableWires:[W_BROWN,W_BLUE,W_GREEN,W_BLACK],requireEarth:true,
+   components:[{type:'groepenkast',row:4,col:0,state:true},{type:'centraaldoos',row:4,col:5,state:true},{type:'schakelaar',row:2,col:5,state:false},{type:'lamp',row:2,col:10,state:false},{type:'lamp',row:6,col:10,state:false},{type:'wandcontactdoos',row:8,col:13,state:false}],
+   starThresholds:{three:55,two:72}},
+
+  // --- STORING LEVELS ---
+  {id:9,name:'Licht Uit!',mode:'storing',gridWidth:10,gridHeight:7,
+   description:'De lamp doet het niet! Zoek de storing en repareer het circuit.',
+   concept:'Bij een storing moet je systematisch zoeken: zit er spanning op de draden? Is het circuit compleet? Gebruik de multimeter om te meten.',
+   availableWires:[W_BROWN,W_BLUE,W_GREEN],requireEarth:false,hintText:'De nuldraad is niet compleet...',
+   components:[{type:'groepenkast',row:3,col:0,state:true},{type:'lamp',row:3,col:9,state:false}],
+   preplacedWires:[
+     {r:3,c:1,w:W_BROWN},{r:3,c:2,w:W_BROWN},{r:3,c:3,w:W_BROWN},{r:3,c:4,w:W_BROWN},{r:3,c:5,w:W_BROWN},{r:3,c:6,w:W_BROWN},{r:3,c:7,w:W_BROWN},{r:3,c:8,w:W_BROWN},
+     {r:4,c:1,w:W_BLUE},{r:4,c:2,w:W_BLUE},{r:4,c:3,w:W_BLUE},{r:4,c:5,w:W_BLUE},{r:4,c:6,w:W_BLUE},{r:4,c:7,w:W_BLUE},{r:4,c:8,w:W_BLUE},
+     {r:3,c:1,w:W_GREEN},{r:3,c:2,w:W_GREEN},{r:3,c:3,w:W_GREEN},{r:3,c:4,w:W_GREEN},{r:3,c:5,w:W_GREEN},{r:3,c:6,w:W_GREEN},{r:3,c:7,w:W_GREEN},{r:3,c:8,w:W_GREEN}
+   ],
+   maxActions:{three:2,two:4},starThresholds:{three:2,two:4}},
+
+  {id:10,name:'Verkeerde Kleur',mode:'storing',gridWidth:10,gridHeight:7,
+   description:'De schakelaar en lamp zijn aangesloten, maar er is iets mis met de draadkleuren. Vind en corrigeer de fout!',
+   concept:'Het gebruik van de juiste draadkleur is essentieel. Een bruine draad waar een zwarte hoort, of andersom, kan gevaarlijk zijn en werkt niet correct.',
+   availableWires:[W_BROWN,W_BLUE,W_GREEN,W_BLACK],requireEarth:false,hintText:'Kijk goed naar de draad tussen schakelaar en lamp...',
+   components:[{type:'groepenkast',row:3,col:0,state:true},{type:'schakelaar',row:1,col:4,state:true},{type:'lamp',row:3,col:9,state:false}],
+   preplacedWires:[
+     {r:3,c:1,w:W_BROWN},{r:3,c:2,w:W_BROWN},{r:3,c:3,w:W_BROWN},{r:2,c:4,w:W_BROWN},{r:1,c:3,w:W_BROWN},{r:1,c:4,w:W_BROWN|W_GREEN},{r:2,c:4,w:W_GREEN},
+     {r:1,c:5,w:W_BROWN},{r:1,c:6,w:W_BROWN},{r:1,c:7,w:W_BROWN},{r:1,c:8,w:W_BROWN},{r:1,c:9,w:W_BROWN},{r:2,c:9,w:W_BROWN},
+     {r:4,c:1,w:W_BLUE},{r:4,c:2,w:W_BLUE},{r:4,c:3,w:W_BLUE},{r:4,c:4,w:W_BLUE},{r:4,c:5,w:W_BLUE},{r:4,c:6,w:W_BLUE},{r:4,c:7,w:W_BLUE},{r:4,c:8,w:W_BLUE},{r:4,c:9,w:W_BLUE},{r:3,c:9,w:W_BLUE},
+     {r:3,c:1,w:W_GREEN},{r:3,c:2,w:W_GREEN},{r:3,c:3,w:W_GREEN},{r:3,c:4,w:W_GREEN},{r:3,c:5,w:W_GREEN},{r:3,c:6,w:W_GREEN},{r:3,c:7,w:W_GREEN},{r:3,c:8,w:W_GREEN},{r:3,c:9,w:W_GREEN}
+   ],
+   maxActions:{three:3,two:5},starThresholds:{three:3,two:5}},
+
+  {id:11,name:'Losse Verbinding',mode:'storing',gridWidth:11,gridHeight:8,
+   description:'Er zijn meerdere problemen: een onderbroken draad en de schakelaar staat uit. Los alles op!',
+   concept:'In de praktijk heb je vaak meerdere problemen tegelijk. Werk systematisch: controleer eerst de bedrading, dan de schakelaars.',
+   availableWires:[W_BROWN,W_BLUE,W_GREEN,W_BLACK],requireEarth:true,hintText:'Check de bruine draad naar de schakelaar en vergeet de schakelaar niet aan te zetten.',
+   components:[{type:'groepenkast',row:3,col:0,state:true},{type:'centraaldoos',row:3,col:4,state:true},{type:'schakelaar',row:5,col:4,state:false},{type:'lamp',row:1,col:10,state:false}],
+   preplacedWires:[
+     {r:3,c:1,w:W_BROWN|W_BLUE|W_GREEN},{r:3,c:2,w:W_BROWN|W_BLUE|W_GREEN},{r:3,c:3,w:W_BROWN|W_BLUE|W_GREEN},
+     {r:4,c:4,w:W_BROWN},{r:5,c:5,w:W_BLACK},{r:5,c:6,w:W_BLACK},{r:4,c:4,w:W_GREEN},
+     {r:3,c:5,w:W_BLACK},{r:3,c:6,w:W_BLACK},{r:3,c:7,w:W_BLACK},{r:3,c:8,w:W_BLACK},{r:3,c:9,w:W_BLACK},{r:2,c:10,w:W_BLACK},{r:1,c:10,w:W_BLACK},
+     {r:3,c:5,w:W_BLUE|W_GREEN},{r:3,c:6,w:W_BLUE|W_GREEN},{r:3,c:7,w:W_BLUE|W_GREEN},{r:3,c:8,w:W_BLUE|W_GREEN},{r:3,c:9,w:W_BLUE|W_GREEN},{r:2,c:10,w:W_BLUE|W_GREEN},{r:1,c:10,w:W_BLUE|W_GREEN}
+   ],
+   maxActions:{three:3,two:6},starThresholds:{three:3,two:6}},
+
+  {id:12,name:'De Nokverhoging',mode:'storing',gridWidth:14,gridHeight:10,
+   description:'Je bent met je schoonvader de elektra aan het aanleggen op de nokverhoging. Twee lampen doen het niet! Vind en repareer alle storingen.',
+   concept:'Dit is een realistisch scenario: je hebt een complex circuit met meerdere fouten. Werk als een echte elektricien: meet, analyseer, repareer. De "snelweg" (hoofdleiding) en "rijkswegen" (aftakkingen) moeten allemaal kloppen.',
+   availableWires:[W_BROWN,W_BLUE,W_GREEN,W_BLACK],requireEarth:true,hintText:'Volg de snelweg (hoofdleiding) en check elke rijksweg (aftakking) naar de lampen.',
+   components:[{type:'groepenkast',row:4,col:0,state:true},{type:'centraaldoos',row:4,col:5,state:true},{type:'schakelaar',row:2,col:5,state:true},{type:'lamp',row:2,col:10,state:false},{type:'lamp',row:6,col:10,state:false},{type:'wandcontactdoos',row:8,col:13,state:false}],
+   preplacedWires:[
+     // Snelweg: groepenkast -> centraaldoos
+     {r:4,c:1,w:W_BROWN|W_BLUE|W_GREEN},{r:4,c:2,w:W_BROWN|W_BLUE|W_GREEN},{r:4,c:3,w:W_BROWN|W_BLUE|W_GREEN},{r:4,c:4,w:W_BROWN|W_BLUE|W_GREEN},
+     // Bruin naar schakelaar
+     {r:3,c:5,w:W_BROWN},{r:2,c:5,w:W_BROWN},
+     // Zwart van schakelaar naar lamp 1 (maar gap at col 8)
+     {r:2,c:6,w:W_BLACK},{r:2,c:7,w:W_BLACK},{r:2,c:9,w:W_BLACK},
+     // Blauw+groen naar lamp 1
+     {r:3,c:5,w:W_BLUE|W_GREEN},{r:2,c:6,w:W_BLUE|W_GREEN},{r:2,c:7,w:W_BLUE|W_GREEN},{r:2,c:8,w:W_BLUE|W_GREEN},{r:2,c:9,w:W_BLUE|W_GREEN},{r:2,c:10,w:W_BLUE|W_GREEN},
+     // Rijksweg naar lamp 2 (maar wrong color: bruin waar zwart moet)
+     {r:5,c:5,w:W_BLACK},{r:6,c:5,w:W_BLACK},{r:6,c:6,w:W_BROWN},{r:6,c:7,w:W_BROWN},{r:6,c:8,w:W_BROWN},{r:6,c:9,w:W_BROWN},
+     {r:5,c:5,w:W_BLUE|W_GREEN},{r:6,c:5,w:W_BLUE|W_GREEN},{r:6,c:6,w:W_BLUE|W_GREEN},{r:6,c:7,w:W_BLUE|W_GREEN},{r:6,c:8,w:W_BLUE|W_GREEN},{r:6,c:9,w:W_BLUE|W_GREEN},{r:6,c:10,w:W_BLUE|W_GREEN},
+     // WCD
+     {r:4,c:6,w:W_BROWN|W_BLUE|W_GREEN},{r:4,c:7,w:W_BROWN|W_BLUE|W_GREEN},{r:4,c:8,w:W_BROWN|W_BLUE|W_GREEN},{r:4,c:9,w:W_BROWN|W_BLUE|W_GREEN},{r:4,c:10,w:W_BROWN|W_BLUE|W_GREEN},
+     {r:4,c:11,w:W_BROWN|W_BLUE|W_GREEN},{r:4,c:12,w:W_BROWN|W_BLUE|W_GREEN},{r:4,c:13,w:W_BROWN|W_BLUE|W_GREEN},
+     {r:5,c:13,w:W_BROWN|W_BLUE|W_GREEN},{r:6,c:13,w:W_BROWN|W_BLUE|W_GREEN},{r:7,c:13,w:W_BROWN|W_BLUE|W_GREEN}
+   ],
+   maxActions:{three:5,two:9},starThresholds:{three:5,two:9}}
+];
+
+// ================================================
+// 3. GAME STATE
+// ================================================
+const GS={
+  currentLevel:0,grid:[],gridWidth:0,gridHeight:0,components:[],
+  activeTool:W_BROWN,toolMode:'draw', // 'draw','erase','meter'
+  isDrawing:false,lastDrawCell:null,
+  isPowered:false,poweredCells:new Map(), // Map<cellKey, Set<wireColor>>
+  wireCount:0,bestStars:[],hoverCell:null,
+  actionCount:0,
+  // Multimeter
+  meterResult:null,meterPos:null,
+  // Animation
+  particles:[],celebrationParticles:[],particlePaths:[],
+  particleSpawnTimer:0,glowPhase:0,animationActive:false,
+  // Blink for broken lamps
+  blinkPhase:0,
+  // Canvas
+  canvas:null,ctx:null,cellSize:0,lastFrameTime:0
+};
+
+// ================================================
+// 4. UTILITIES
+// ================================================
+function isValidCell(r,c){return r>=0&&r<GS.gridHeight&&c>=0&&c<GS.gridWidth}
+function getComponentAt(r,c){return GS.components.find(co=>co.row===r&&co.col===c)||null}
+function pixelToGrid(px,py){return{row:Math.floor(py/GS.cellSize),col:Math.floor(px/GS.cellSize)}}
+function gridCenter(r,c){return{x:c*GS.cellSize+GS.cellSize/2,y:r*GS.cellSize+GS.cellSize/2}}
+function ck(r,c){return(r<<8)|c} // compact cell key
+function createGrid(w,h){return Array.from({length:h},()=>new Array(w).fill(0))}
+
+function cellHas(r,c,w){return(GS.grid[r][c]&w)!==0}
+function cellAdd(r,c,w){if(!(GS.grid[r][c]&w)){GS.grid[r][c]|=w;GS.wireCount++}}
+function cellRemove(r,c,w){if(GS.grid[r][c]&w){GS.grid[r][c]&=~w;GS.wireCount--}}
+function cellRemoveAll(r,c){
+  const v=GS.grid[r][c];if(!v)return;
+  for(const w of ALL_WIRES)if(v&w)GS.wireCount--;
+  GS.grid[r][c]=0;
+}
+function cellColors(r,c){
+  const v=GS.grid[r][c],out=[];
+  for(const w of ALL_WIRES)if(v&w)out.push(w);
+  return out;
+}
+
+function compAccepts(comp,w){
+  const t=comp.type;
+  if(t==='groepenkast')return w===W_BROWN||w===W_BLUE||w===W_GREEN;
+  if(t==='centraaldoos')return true; // pass-through all
+  if(t==='lamp')return w===W_BROWN||w===W_BLUE||w===W_GREEN||w===W_BLACK;
+  if(t==='schakelaar')return w===W_BROWN||w===W_BLACK;
+  if(t==='wandcontactdoos')return w===W_BROWN||w===W_BLUE||w===W_GREEN;
+  return false;
+}
+
+function neighborHasColor(r,c,w){
+  const res={up:false,down:false,left:false,right:false};
+  const dirs=[['up',-1,0],['down',1,0],['left',0,-1],['right',0,1]];
+  for(const[d,dr,dc]of dirs){
+    const nr=r+dr,nc=c+dc;
+    if(!isValidCell(nr,nc))continue;
+    if(cellHas(nr,nc,w)){res[d]=true;continue}
+    const co=getComponentAt(nr,nc);
+    if(co&&compAccepts(co,w))res[d]=true;
+  }
+  return res;
+}
+
+function dimHex(hex,f){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return`rgb(${r*f|0},${g*f|0},${b*f|0})`;
+}
+
+function currentLevel(){return LEVELS[GS.currentLevel]}
+function isStoringMode(){return currentLevel().mode==='storing'}
+
+// ================================================
+// 5. COMPONENT DRAWING
+// ================================================
+function drawComponent(comp){
+  const ctx=GS.ctx,{x,y}=gridCenter(comp.row,comp.col),s=GS.cellSize;
+  ctx.save();
+  const fn={groepenkast:drawGroepenkast,centraaldoos:drawCentraaldoos,lamp:drawLamp,schakelaar:drawSchakelaar,wandcontactdoos:drawWCD};
+  if(fn[comp.type])fn[comp.type](ctx,x,y,s,comp);
+  ctx.restore();
+}
+
+function drawGroepenkast(ctx,x,y,s,comp){
+  ctx.fillStyle='#1e293b';
+  ctx.beginPath();ctx.roundRect(x-s/2+2,y-s/2+2,s-4,s-4,4);ctx.fill();
+  const pw=comp.powered;
+  if(pw){ctx.shadowColor='#22c55e';ctx.shadowBlur=8+4*Math.sin(GS.glowPhase)}
+  ctx.strokeStyle=pw?'#22c55e':'#475569';ctx.lineWidth=2;
+  ctx.beginPath();ctx.roundRect(x-s/2+2,y-s/2+2,s-4,s-4,4);ctx.stroke();
+  ctx.shadowBlur=0;
+  // Automaat symbol
+  ctx.fillStyle='#0f172a';
+  const bw=s*.22,bh=s*.3;
+  ctx.fillRect(x-bw/2,y-bh/2-s*.05,bw,bh);
+  ctx.strokeStyle='#475569';ctx.lineWidth=1;ctx.strokeRect(x-bw/2,y-bh/2-s*.05,bw,bh);
+  // Switch in automaat
+  ctx.strokeStyle=pw?'#22c55e':'#ef4444';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(x,y-s*.05+bh*.3);ctx.lineTo(x,y-s*.05-bh*.2);ctx.stroke();
+  // Terminal dots
+  const dx=x+s/2-7,dotR=s*.05;
+  ctx.fillStyle='#8B4513';ctx.beginPath();ctx.arc(dx,y-s*.18,dotR,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#2563eb';ctx.beginPath();ctx.arc(dx,y,dotR,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#22c55e';ctx.beginPath();ctx.arc(dx,y+s*.18,dotR,0,Math.PI*2);ctx.fill();
+  // Label
+  ctx.fillStyle='#94a3b8';ctx.font=`${Math.max(7,s*.12)}px 'Share Tech Mono',monospace`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('KAST',x,y+s/2-3);
+}
+
+function drawCentraaldoos(ctx,x,y,s,comp){
+  const r=s*.32;
+  ctx.fillStyle='#1e293b';ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle=comp.powered?'#94a3b8':'#475569';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();
+  // Cross
+  ctx.strokeStyle='#334155';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(x-r*.5,y);ctx.lineTo(x+r*.5,y);ctx.moveTo(x,y-r*.5);ctx.lineTo(x,y+r*.5);ctx.stroke();
+  // Dots for wire colors
+  const dd=r*.6;
+  ctx.fillStyle='#8B4513';ctx.beginPath();ctx.arc(x-dd*.5,y-dd*.5,2.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#2563eb';ctx.beginPath();ctx.arc(x+dd*.5,y-dd*.5,2.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#22c55e';ctx.beginPath();ctx.arc(x-dd*.5,y+dd*.5,2.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#475569';ctx.beginPath();ctx.arc(x+dd*.5,y+dd*.5,2.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#64748b';ctx.font=`${Math.max(6,s*.1)}px 'Share Tech Mono',monospace`;
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('CDOOS',x,y+s/2-3);
+}
+
+function drawLamp(ctx,x,y,s,comp){
+  const pw=comp.powered,r=s*.3;
+  // Failed blink in storing mode
+  const blinkOff=isStoringMode()&&!pw&&!GS.isPowered&&GS.blinkPhase>0&&Math.sin(GS.blinkPhase*4)>0;
+  if(pw){
+    const gr=ctx.createRadialGradient(x,y,0,x,y,s*1.1);
+    gr.addColorStop(0,'rgba(251,191,36,0.35)');gr.addColorStop(0.5,'rgba(251,191,36,0.1)');gr.addColorStop(1,'rgba(251,191,36,0)');
+    ctx.fillStyle=gr;ctx.beginPath();ctx.arc(x,y,s*1.1,0,Math.PI*2);ctx.fill();
+  }
+  ctx.shadowColor=pw?'#fbbf24':'transparent';
+  ctx.shadowBlur=pw?12+4*Math.sin(GS.glowPhase):0;
+  ctx.fillStyle=pw?'#fbbf24':blinkOff?'#ef4444':'#475569';
+  ctx.beginPath();ctx.arc(x,y-s*.04,r*.75,0,Math.PI*2);ctx.fill();
+  ctx.shadowBlur=0;
+  if(pw){ctx.fillStyle='rgba(255,255,255,0.4)';ctx.beginPath();ctx.arc(x-r*.2,y-s*.04-r*.2,r*.2,0,Math.PI*2);ctx.fill()}
+  ctx.strokeStyle=pw?'#fff':'#334155';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(x-r*.15,y+r*.25-s*.04);ctx.lineTo(x-r*.15,y-r*.25-s*.04);
+  ctx.moveTo(x+r*.15,y+r*.25-s*.04);ctx.lineTo(x+r*.15,y-r*.25-s*.04);ctx.stroke();
+  ctx.fillStyle='#94a3b8';ctx.fillRect(x-r*.35,y+r*.55-s*.04,r*.7,r*.3);
+  // Terminal dots
+  if(!pw&&!blinkOff){
+    const pt=comp.poweredTerminals||{};
+    const ty=y+s/2-10;
+    ctx.fillStyle=pt.L?'#22c55e':'#ef4444';ctx.beginPath();ctx.arc(x-8,ty,2,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=pt.N?'#22c55e':'#ef4444';ctx.beginPath();ctx.arc(x,ty,2,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=pt.PE?'#22c55e':'#ef4444';ctx.beginPath();ctx.arc(x+8,ty,2,0,Math.PI*2);ctx.fill();
+  }
+  ctx.fillStyle='#64748b';ctx.font=`${Math.max(7,s*.12)}px 'Share Tech Mono',monospace`;
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('LAMP',x,y+s/2-3);
+}
+
+function drawSchakelaar(ctx,x,y,s,comp){
+  const on=comp.state;
+  ctx.fillStyle=on?'#14532d':'#1e293b';
+  ctx.beginPath();ctx.roundRect(x-s/2+2,y-s/2+2,s-4,s-4,4);ctx.fill();
+  ctx.strokeStyle=on?'#22c55e':'#64748b';ctx.lineWidth=2;
+  ctx.beginPath();ctx.roundRect(x-s/2+2,y-s/2+2,s-4,s-4,4);ctx.stroke();
+  // Terminal indicators
+  const dotY=y-s/2+8;
+  ctx.fillStyle='#8B4513';ctx.beginPath();ctx.arc(x-s*.15,dotY,3,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#475569';ctx.beginPath();ctx.arc(x+s*.15,dotY,3,0,Math.PI*2);ctx.fill();
+  // Track
+  const tw=s*.45,th=s*.18;
+  ctx.fillStyle='#0f172a';ctx.beginPath();ctx.roundRect(x-tw/2,y-th/2,tw,th,th/2);ctx.fill();
+  const lx=on?x+tw/2-th/2:x-tw/2+th/2;
+  ctx.shadowColor=on?'#22c55e':'transparent';ctx.shadowBlur=on?6:0;
+  ctx.fillStyle=on?'#22c55e':'#64748b';
+  ctx.beginPath();ctx.arc(lx,y,th*.55,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+  ctx.fillStyle=on?'#22c55e':'#64748b';ctx.font=`${Math.max(7,s*.12)}px 'Share Tech Mono',monospace`;
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(on?'AAN':'UIT',x,y+s/2-3);
+}
+
+function drawWCD(ctx,x,y,s,comp){
+  const pw=comp.powered;
+  // Faceplate
+  ctx.fillStyle='#e2e8f0';
+  ctx.beginPath();ctx.roundRect(x-s*.32,y-s*.32,s*.64,s*.64,4);ctx.fill();
+  // Socket hole
+  ctx.fillStyle='#0f172a';ctx.beginPath();ctx.arc(x,y-s*.02,s*.17,0,Math.PI*2);ctx.fill();
+  // Pin holes
+  ctx.fillStyle=pw?'#fbbf24':'#1e293b';
+  ctx.beginPath();ctx.arc(x-s*.06,y-s*.08,s*.03,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(x+s*.06,y-s*.08,s*.03,0,Math.PI*2);ctx.fill();
+  // Earth pin
+  ctx.fillStyle='#22c55e';ctx.beginPath();ctx.arc(x,y+s*.06,s*.025,0,Math.PI*2);ctx.fill();
+  if(pw){ctx.shadowColor='#22c55e';ctx.shadowBlur=8}
+  ctx.strokeStyle=pw?'#22c55e':'#94a3b8';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.roundRect(x-s*.32,y-s*.32,s*.64,s*.64,4);ctx.stroke();ctx.shadowBlur=0;
+  ctx.fillStyle='#64748b';ctx.font=`${Math.max(7,s*.12)}px 'Share Tech Mono',monospace`;
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('WCD',x,y+s/2-3);
+}
+
+// ================================================
+// 6. GRID & WIRE RENDERING
+// ================================================
+function resizeCanvas(){
+  const ct=document.getElementById('game-area');
+  const aw=ct.clientWidth-24,ah=ct.clientHeight-24;
+  const cw=Math.floor(aw/GS.gridWidth),ch=Math.floor(ah/GS.gridHeight);
+  GS.cellSize=Math.min(cw,ch,60);
+  if(window.innerWidth<768)GS.cellSize=Math.max(GS.cellSize,34);
+  GS.canvas.width=GS.gridWidth*GS.cellSize;
+  GS.canvas.height=GS.gridHeight*GS.cellSize;
+}
+
+function drawGrid(){
+  const ctx=GS.ctx,s=GS.cellSize;
+  ctx.fillStyle='#0a0e1a';ctx.fillRect(0,0,GS.canvas.width,GS.canvas.height);
+  for(let r=0;r<GS.gridHeight;r++)for(let c=0;c<GS.gridWidth;c++){
+    const x=c*s,y=r*s;
+    ctx.fillStyle='#0f172a';ctx.fillRect(x+1,y+1,s-2,s-2);
+    ctx.strokeStyle='#1e293b';ctx.lineWidth=.5;ctx.strokeRect(x+.5,y+.5,s-1,s-1);
+  }
+}
+
+function drawWires(){
+  const ctx=GS.ctx,s=GS.cellSize;
+  for(let r=0;r<GS.gridHeight;r++)for(let c=0;c<GS.gridWidth;c++){
+    const v=GS.grid[r][c];if(!v)continue;
+    const colors=cellColors(r,c),n=colors.length;
+    const center=gridCenter(r,c);
+    const spacing=Math.min(s*.1,4);
+    const total=(n-1)*spacing;
+
+    // Snelweg bundel effect for 3+ wires
+    if(n>=3){
+      const nb=neighborHasBundle(r,c);
+      ctx.strokeStyle='rgba(30,41,59,0.7)';ctx.lineWidth=n*spacing+6;ctx.lineCap='round';
+      drawBundleSegments(ctx,center,nb,s);
+    }
+
+    colors.forEach((w,idx)=>{
+      const off=-total/2+idx*spacing;
+      const nb=neighborHasColor(r,c,w);
+      const meta=WIRE_META[w];
+      const key=ck(r,c);
+      const pc=GS.poweredCells.get(key);
+      const isPow=pc&&pc.has(w);
+
+      // Glow
+      if(isPow){
+        const int=.6+.4*Math.sin(GS.glowPhase);
+        ctx.save();ctx.shadowColor=meta.glow;ctx.shadowBlur=6*int;
+        ctx.strokeStyle=meta.hex;ctx.lineWidth=4;ctx.lineCap='round';
+        drawOffsetSegments(ctx,center,nb,s,off,w);
+        ctx.restore();
+      }
+
+      // Core wire
+      ctx.strokeStyle=isPow?meta.hex:dimHex(meta.hex,.55);
+      ctx.lineWidth=isPow?3:2.5;ctx.lineCap='round';
+      drawOffsetSegments(ctx,center,nb,s,off,w);
+
+      // Earth stripe pattern
+      if(w===W_GREEN){
+        ctx.save();ctx.strokeStyle=isPow?'#facc15':dimHex('#facc15',.4);
+        ctx.lineWidth=1.5;ctx.setLineDash([3,3]);ctx.lineCap='round';
+        drawOffsetSegments(ctx,center,nb,s,off,w);
+        ctx.setLineDash([]);ctx.restore();
+      }
+
+      // Black wire outline for visibility
+      if(w===W_BLACK&&!isPow){
+        ctx.save();ctx.strokeStyle='#64748b';ctx.lineWidth=.5;ctx.lineCap='round';
+        drawOffsetSegments(ctx,center,nb,s,off,w);
+        ctx.restore();
+      }
+    });
+  }
+}
+
+function neighborHasBundle(r,c){
+  const res={up:false,down:false,left:false,right:false};
+  for(const[d,dr,dc]of[['up',-1,0],['down',1,0],['left',0,-1],['right',0,1]]){
+    const nr=r+dr,nc=c+dc;
+    if(!isValidCell(nr,nc))continue;
+    const cnt=cellColors(nr,nc).length;
+    const comp=getComponentAt(nr,nc);
+    if(cnt>=3||comp)res[d]=true;
+  }
+  return res;
+}
+
+function drawBundleSegments(ctx,center,nb,s){
+  const h=s/2;
+  ctx.beginPath();
+  if(nb.up){ctx.moveTo(center.x,center.y);ctx.lineTo(center.x,center.y-h)}
+  if(nb.down){ctx.moveTo(center.x,center.y);ctx.lineTo(center.x,center.y+h)}
+  if(nb.left){ctx.moveTo(center.x,center.y);ctx.lineTo(center.x-h,center.y)}
+  if(nb.right){ctx.moveTo(center.x,center.y);ctx.lineTo(center.x+h,center.y)}
+  ctx.stroke();
+}
+
+function drawOffsetSegments(ctx,center,nb,s,off){
+  const h=s/2;
+  ctx.beginPath();
+  if(nb.up){ctx.moveTo(center.x+off,center.y);ctx.lineTo(center.x+off,center.y-h)}
+  if(nb.down){ctx.moveTo(center.x+off,center.y);ctx.lineTo(center.x+off,center.y+h)}
+  if(nb.left){ctx.moveTo(center.x,center.y+off);ctx.lineTo(center.x-h,center.y+off)}
+  if(nb.right){ctx.moveTo(center.x,center.y+off);ctx.lineTo(center.x+h,center.y+off)}
+  ctx.stroke();
+  // Junction dot
+  const cnt=[nb.up,nb.down,nb.left,nb.right].filter(Boolean).length;
+  if(cnt===0){ctx.beginPath();ctx.arc(center.x+off,center.y+off,ctx.lineWidth*.6,0,Math.PI*2);ctx.fillStyle=ctx.strokeStyle;ctx.fill()}
+  else if(cnt>=2){ctx.beginPath();ctx.arc(center.x,center.y,ctx.lineWidth*.5,0,Math.PI*2);ctx.fillStyle=ctx.strokeStyle;ctx.fill()}
+}
+
+function drawHoverPreview(){
+  if(GS.toolMode!=='draw'||!GS.hoverCell||GS.isDrawing)return;
+  const{row,col}=GS.hoverCell;
+  if(!isValidCell(row,col)||getComponentAt(row,col))return;
+  const meta=WIRE_META[GS.activeTool];if(!meta)return;
+  const ctx=GS.ctx,s=GS.cellSize;
+  ctx.fillStyle=meta.hex+'30';
+  ctx.beginPath();ctx.roundRect(col*s+2,row*s+2,s-4,s-4,3);ctx.fill();
+}
+
+function drawComponentConnections(){
+  const ctx=GS.ctx;
+  for(const comp of GS.components){
+    const center=gridCenter(comp.row,comp.col);
+    const h=GS.cellSize/2;
+    for(const[dr,dc]of DIRS){
+      const nr=comp.row+dr,nc=comp.col+dc;
+      if(!isValidCell(nr,nc))continue;
+      const nv=GS.grid[nr][nc];
+      const ncomp=getComponentAt(nr,nc);
+      if(!nv&&!ncomp)continue;
+      const ncolors=ncomp?ALL_WIRES.filter(w=>compAccepts(ncomp,w)):cellColors(nr,nc);
+      for(const w of ncolors){
+        if(!compAccepts(comp,w))continue;
+        if(!ncomp&&!cellHas(nr,nc,w))continue;
+        const meta=WIRE_META[w];
+        const key=ck(comp.row,comp.col);
+        const pc=GS.poweredCells.get(key);
+        const isPow=pc&&pc.has(w);
+        if(isPow){ctx.shadowColor=meta.glow;ctx.shadowBlur=5}
+        ctx.strokeStyle=isPow?meta.hex:dimHex(meta.hex,.5);
+        ctx.lineWidth=isPow?3:2;ctx.lineCap='round';
+        ctx.beginPath();ctx.moveTo(center.x,center.y);ctx.lineTo(center.x+dc*h,center.y+dr*h);ctx.stroke();
+        ctx.shadowBlur=0;
+      }
+    }
+  }
+}
+
+// ================================================
+// 7. CIRCUIT VALIDATION (multi-color BFS)
+// ================================================
+function clearPowerState(){
+  GS.isPowered=false;GS.poweredCells=new Map();
+  GS.particles=[];GS.celebrationParticles=[];GS.particlePaths=[];
+  GS.particleSpawnTimer=0;GS.animationActive=false;GS.blinkPhase=0;
+  GS.components.forEach(c=>{c.powered=false;c.poweredTerminals={};c.earthConnected=false});
+  updatePowerDisplay();
+}
+
+function bfsColor(startR,startC,wireColor,stopTypes){
+  // BFS on a single wire color from start position
+  // stopTypes: component types where BFS should NOT propagate further (but still marks as reached)
+  const visited=new Set();
+  const queue=[{row:startR,col:startC}];
+  visited.add(ck(startR,startC));
+  while(queue.length>0){
+    const cur=queue.shift();
+    for(const[dr,dc]of DIRS){
+      const nr=cur.row+dr,nc=cur.col+dc,key=ck(nr,nc);
+      if(!isValidCell(nr,nc)||visited.has(key))continue;
+      const comp=getComponentAt(nr,nc);
+      if(comp){
+        if(!compAccepts(comp,wireColor))continue;
+        // Schakelaar: brown stops here (doesn't propagate brown further)
+        if(comp.type==='schakelaar'&&wireColor===W_BROWN){visited.add(key);continue}
+        // Schakelaar OFF blocks black
+        if(comp.type==='schakelaar'&&wireColor===W_BLACK&&!comp.state){continue}
+        if(stopTypes&&stopTypes.includes(comp.type)){visited.add(key);continue}
+        visited.add(key);queue.push({row:nr,col:nc});
+      }else if(cellHas(nr,nc,wireColor)){
+        visited.add(key);queue.push({row:nr,col:nc});
+      }
+    }
+  }
+  return visited;
+}
+
+function validateCircuit(){
+  clearPowerState();
+  const kast=GS.components.find(c=>c.type==='groepenkast');
+  if(!kast)return{success:false,message:'Geen groepenkast gevonden!'};
+
+  // Phase 1: BFS per base color from groepenkast
+  const brownReach=bfsColor(kast.row,kast.col,W_BROWN,['lamp','wandcontactdoos']);
+  const blueReach=bfsColor(kast.row,kast.col,W_BLUE,['lamp','wandcontactdoos']);
+  const greenReach=bfsColor(kast.row,kast.col,W_GREEN,['lamp','wandcontactdoos']);
+
+  // Phase 2: For each schakelaar reached by brown AND state ON, BFS black from there
+  const blackReach=new Set();
+  const schakelaars=GS.components.filter(c=>c.type==='schakelaar');
+  for(const sw of schakelaars){
+    const swKey=ck(sw.row,sw.col);
+    if(sw.state&&brownReach.has(swKey)){
+      const swBlack=bfsColor(sw.row,sw.col,W_BLACK,['lamp']);
+      for(const k of swBlack)blackReach.add(k);
+    }
+  }
+
+  // Phase 3: Evaluate components
+  const lamps=GS.components.filter(c=>c.type==='lamp');
+  const wcds=GS.components.filter(c=>c.type==='wandcontactdoos');
+  let allOk=true;
+  const lvl=currentLevel();
+
+  for(const lamp of lamps){
+    const k=ck(lamp.row,lamp.col);
+    const hasL=brownReach.has(k)||blackReach.has(k);
+    const hasN=blueReach.has(k);
+    const hasPE=greenReach.has(k);
+    lamp.poweredTerminals={L:hasL,N:hasN,PE:hasPE};
+    lamp.powered=hasL&&hasN;
+    lamp.earthConnected=hasPE;
+    if(!lamp.powered)allOk=false;
+    if(lvl.requireEarth&&!hasPE)allOk=false;
+  }
+  for(const wcd of wcds){
+    const k=ck(wcd.row,wcd.col);
+    const hasL=brownReach.has(k);
+    const hasN=blueReach.has(k);
+    const hasPE=greenReach.has(k);
+    wcd.poweredTerminals={L:hasL,N:hasN,PE:hasPE};
+    wcd.powered=hasL&&hasN;
+    wcd.earthConnected=hasPE;
+    if(!wcd.powered)allOk=false;
+    if(lvl.requireEarth&&!hasPE)allOk=false;
+  }
+
+  if(allOk){
+    GS.isPowered=true;GS.animationActive=true;
+    applyPowered(brownReach,blueReach,greenReach,blackReach);
+    kast.powered=true;
+    GS.components.filter(c=>c.type==='centraaldoos').forEach(c=>{
+      const k=ck(c.row,c.col);
+      c.powered=brownReach.has(k)||blueReach.has(k);
+    });
+    schakelaars.forEach(sw=>{const k=ck(sw.row,sw.col);if(brownReach.has(k))sw.powered=true});
+    buildParticlePaths();
+    updatePowerDisplay();
+    const stars=calculateStars();
+    return{success:true,stars,message:getSuccessMsg(stars)};
+  }else{
+    // Mark what IS powered for partial feedback
+    applyPowered(brownReach,blueReach,greenReach,blackReach);
+    kast.powered=true;
+    GS.blinkPhase=1;
+    return{success:false,message:getFailMsg(lamps,wcds,schakelaars)};
+  }
+}
+
+function applyPowered(brown,blue,green,black){
+  GS.poweredCells=new Map();
+  const add=(set,w)=>{for(const k of set){if(!GS.poweredCells.has(k))GS.poweredCells.set(k,new Set());GS.poweredCells.get(k).add(w)}};
+  add(brown,W_BROWN);add(blue,W_BLUE);add(green,W_GREEN);add(black,W_BLACK);
+}
+
+function getFailMsg(lamps,wcds,schakelaars){
+  if(GS.wireCount===0)return'Je hebt nog geen draden gelegd! Kies een draadkleur en teken.';
+  const offSw=schakelaars.find(s=>!s.state);
+  // Check lamps
+  for(const l of lamps){
+    if(l.powered)continue;
+    const t=l.poweredTerminals||{};
+    if(!t.L&&!t.N)return'De lamp mist zowel fase als nul. Verbind bruine (of zwarte) en blauwe draden.';
+    if(!t.L){
+      if(schakelaars.length>0)return'De lamp mist een fase-verbinding. Leg een zwarte schakeldraad van de schakelaar naar de lamp.'+(offSw?' Vergeet niet de schakelaar aan te zetten!':'');
+      return'De lamp mist een fase-verbinding. Leg een bruine draad naar de lamp.';
+    }
+    if(!t.N)return'De lamp mist een nul-verbinding. Leg een blauwe draad van de lamp terug naar de groepenkast.';
+    if(currentLevel().requireEarth&&!t.PE)return'De lamp mist een aardeverbinding. Leg een groen-gele draad voor veiligheid!';
+  }
+  for(const w of wcds){
+    if(w.powered&&(!currentLevel().requireEarth||w.earthConnected))continue;
+    const t=w.poweredTerminals||{};
+    if(!t.L)return'Het stopcontact mist fase (bruin).';
+    if(!t.N)return'Het stopcontact mist nul (blauw).';
+    if(!t.PE&&currentLevel().requireEarth)return'Het stopcontact mist aarde (groen/geel).';
+  }
+  if(offSw)return'De schakelaar staat uit! Klik op de schakelaar om deze aan te zetten.';
+  return'Het circuit is niet compleet. Controleer alle verbindingen!';
+}
+
+function getSuccessMsg(stars){
+  if(isStoringMode()){
+    if(stars===3)return'Storing perfect opgelost! Minimaal aantal acties.';
+    if(stars===2)return'Storing opgelost! Probeer het met minder acties voor 3 sterren.';
+    return'Storing opgelost! Maar je kunt effici\u00ebnter werken.';
+  }
+  if(stars===3)return'Perfecte bedrading! Zo min mogelijk draden gebruikt.';
+  if(stars===2)return'Goed gedaan! Probeer met minder draden voor 3 sterren.';
+  return'Gelukt! Probeer minder draden te gebruiken.';
+}
+
+// ================================================
+// 8. ANIMATION SYSTEM
+// ================================================
+function buildParticlePaths(){
+  GS.particlePaths=[];
+  const kast=GS.components.find(c=>c.type==='groepenkast');
+  if(!kast)return;
+  const endpoints=[...GS.components.filter(c=>(c.type==='lamp'||c.type==='wandcontactdoos')&&c.powered)];
+  for(const ep of endpoints){
+    const path=bfsPathPowered(kast,ep);
+    if(path)GS.particlePaths.push({path,color:'#fbbf24'});
+  }
+}
+
+function bfsPathPowered(from,to){
+  const visited=new Set(),parent=new Map();
+  const queue=[{row:from.row,col:from.col}];
+  const sk=ck(from.row,from.col);visited.add(sk);
+  while(queue.length>0){
+    const cur=queue.shift();const curK=ck(cur.row,cur.col);
+    if(cur.row===to.row&&cur.col===to.col){
+      const path=[];let k=curK;
+      while(k!==undefined){const r=k>>8,c=k&255;path.unshift({row:r,col:c});k=parent.get(k)}
+      return path;
+    }
+    for(const[dr,dc]of DIRS){
+      const nr=cur.row+dr,nc=cur.col+dc,key=ck(nr,nc);
+      if(!isValidCell(nr,nc)||visited.has(key))continue;
+      if(!GS.poweredCells.has(key))continue;
+      visited.add(key);parent.set(key,curK);queue.push({row:nr,col:nc});
+    }
+  }
+  return null;
+}
+
+function spawnParticles(dt){
+  if(!GS.animationActive||!GS.particlePaths.length)return;
+  GS.particleSpawnTimer+=dt;
+  if(GS.particleSpawnTimer>.3){
+    GS.particleSpawnTimer=0;
+    for(const pp of GS.particlePaths){
+      GS.particles.push({path:pp.path,color:pp.color,pathIndex:0,progress:0,speed:90+Math.random()*40,radius:2+Math.random()*2,alpha:.7+Math.random()*.3});
+    }
+  }
+}
+
+function updateParticles(dt){
+  for(let i=GS.particles.length-1;i>=0;i--){
+    const p=GS.particles[i];p.progress+=(p.speed*dt)/GS.cellSize;
+    if(p.progress>=1){p.pathIndex++;p.progress-=1;if(p.pathIndex>=p.path.length-1)GS.particles.splice(i,1)}
+  }
+  for(let i=GS.celebrationParticles.length-1;i>=0;i--){
+    const p=GS.celebrationParticles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.alpha-=p.decay*dt;
+    if(p.alpha<=0)GS.celebrationParticles.splice(i,1);
+  }
+}
+
+function drawParticles(){
+  const ctx=GS.ctx;
+  for(const p of GS.particles){
+    if(p.pathIndex>=p.path.length-1)continue;
+    const from=gridCenter(p.path[p.pathIndex].row,p.path[p.pathIndex].col);
+    const to=gridCenter(p.path[p.pathIndex+1].row,p.path[p.pathIndex+1].col);
+    const x=from.x+(to.x-from.x)*p.progress,y=from.y+(to.y-from.y)*p.progress;
+    ctx.save();ctx.shadowColor=p.color;ctx.shadowBlur=8;
+    ctx.fillStyle=p.color.replace(')',`,${p.alpha})`).replace('rgb','rgba');
+    ctx.beginPath();ctx.arc(x,y,p.radius,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=`rgba(255,255,255,${p.alpha*.5})`;
+    ctx.beginPath();ctx.arc(x,y,p.radius*.4,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+  for(const p of GS.celebrationParticles){
+    GS.ctx.save();GS.ctx.shadowColor='#fbbf24';GS.ctx.shadowBlur=6;
+    GS.ctx.fillStyle=`rgba(251,191,36,${Math.max(0,p.alpha)})`;
+    GS.ctx.beginPath();GS.ctx.arc(p.x,p.y,p.radius,0,Math.PI*2);GS.ctx.fill();GS.ctx.restore();
+  }
+}
+
+function spawnCelebration(){
+  const endpoints=GS.components.filter(c=>(c.type==='lamp'||c.type==='wandcontactdoos')&&c.powered);
+  for(const ep of endpoints){
+    const ctr=gridCenter(ep.row,ep.col);
+    for(let i=0;i<14;i++){
+      const a=(Math.PI*2*i)/14,spd=40+Math.random()*50;
+      GS.celebrationParticles.push({x:ctr.x,y:ctr.y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,radius:2+Math.random()*2.5,alpha:1,decay:1.2+Math.random()*.5});
+    }
+  }
+}
+
+// ================================================
+// 9. INPUT HANDLING
+// ================================================
+function initInput(){
+  const cv=GS.canvas;
+
+  cv.addEventListener('mousedown',e=>{
+    const rc=pixelToGrid(e.clientX-cv.getBoundingClientRect().left,e.clientY-cv.getBoundingClientRect().top);
+    ptrDown(rc.row,rc.col,e);
+  });
+  cv.addEventListener('mousemove',e=>{
+    const rect=cv.getBoundingClientRect();
+    const rc=pixelToGrid(e.clientX-rect.left,e.clientY-rect.top);
+    GS.hoverCell=isValidCell(rc.row,rc.col)?rc:null;
+    const comp=getComponentAt(rc.row,rc.col);
+    cv.style.cursor=comp&&comp.type==='schakelaar'?'pointer':GS.toolMode==='meter'?'help':GS.toolMode==='erase'?'grab':'crosshair';
+    if(GS.isDrawing)ptrMove(rc.row,rc.col);
+  });
+  cv.addEventListener('mouseup',()=>ptrUp());
+  cv.addEventListener('mouseleave',()=>{GS.hoverCell=null;ptrUp();hideMeter()});
+
+  cv.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0],rect=cv.getBoundingClientRect();
+    ptrDown(...Object.values(pixelToGrid(t.clientX-rect.left,t.clientY-rect.top)))},{passive:false});
+  cv.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0],rect=cv.getBoundingClientRect();
+    ptrMove(...Object.values(pixelToGrid(t.clientX-rect.left,t.clientY-rect.top)))},{passive:false});
+  cv.addEventListener('touchend',e=>{e.preventDefault();ptrUp()},{passive:false});
+}
+
+function ptrDown(row,col){
+  if(!isValidCell(row,col))return;
+  hideMeter();
+  const comp=getComponentAt(row,col);
+
+  // Multimeter
+  if(GS.toolMode==='meter'){
+    showMeter(row,col);
+    if(isStoringMode())GS.actionCount++;
+    updateActionCounter();
+    return;
+  }
+
+  // Toggle schakelaar
+  if(comp&&comp.type==='schakelaar'){
+    comp.state=!comp.state;clearPowerState();
+    if(isStoringMode()){GS.actionCount++;updateActionCounter()}
+    return;
+  }
+
+  if(comp)return;
+
+  GS.isDrawing=true;GS.lastDrawCell={row,col};
+
+  if(GS.toolMode==='draw'){
+    if(!cellHas(row,col,GS.activeTool)){
+      cellAdd(row,col,GS.activeTool);clearPowerState();updateWireCounter();
+      if(isStoringMode()){GS.actionCount++;updateActionCounter()}
+    }
+  }else if(GS.toolMode==='erase'){
+    if(GS.grid[row][col]){
+      cellRemoveAll(row,col);clearPowerState();updateWireCounter();
+      if(isStoringMode()){GS.actionCount++;updateActionCounter()}
+    }
+  }
+}
+
+function ptrMove(row,col){
+  if(!GS.isDrawing||!isValidCell(row,col))return;
+  if(GS.lastDrawCell&&GS.lastDrawCell.row===row&&GS.lastDrawCell.col===col)return;
+  if(getComponentAt(row,col))return;
+  GS.lastDrawCell={row,col};
+  if(GS.toolMode==='draw'){
+    if(!cellHas(row,col,GS.activeTool)){
+      cellAdd(row,col,GS.activeTool);clearPowerState();updateWireCounter();
+      if(isStoringMode()){GS.actionCount++;updateActionCounter()}
+    }
+  }else if(GS.toolMode==='erase'){
+    if(GS.grid[row][col]){
+      cellRemoveAll(row,col);clearPowerState();updateWireCounter();
+      if(isStoringMode()){GS.actionCount++;updateActionCounter()}
+    }
+  }
+}
+
+function ptrUp(){GS.isDrawing=false;GS.lastDrawCell=null}
+
+// ================================================
+// 10. MULTIMETER
+// ================================================
+function showMeter(row,col){
+  const tip=document.getElementById('multimeter-tip');
+  const colors=cellColors(row,col);
+  const comp=getComponentAt(row,col);
+  if(!colors.length&&!comp){tip.classList.remove('show');return}
+
+  // Quick validate to know what's powered
+  const tmpResult=quickValidate();
+
+  let html='<div style="font-weight:700;margin-bottom:4px">Multimeter</div>';
+  if(comp){
+    html+=`<div style="color:#94a3b8">${comp.type}</div>`;
+  }
+  const key=ck(row,col);
+  const wires=comp?ALL_WIRES.filter(w=>compAccepts(comp,w)):colors;
+  for(const w of wires){
+    const meta=WIRE_META[w];
+    const pc=tmpResult.get(key);
+    const hasPower=pc&&pc.has(w);
+    html+=`<div class="mm-row"><span class="mm-swatch" style="background:${meta.hex}"></span>${meta.name}: <span class="${hasPower?'mm-ok':'mm-fail'}">${hasPower?'SPANNING':'GEEN SPANNING'}</span></div>`;
+  }
+  tip.innerHTML=html;tip.classList.add('show');
+
+  // Position near cursor
+  const rect=GS.canvas.getBoundingClientRect();
+  const cx=rect.left+col*GS.cellSize+GS.cellSize;
+  const cy=rect.top+row*GS.cellSize;
+  tip.style.left=Math.min(cx,window.innerWidth-200)+'px';
+  tip.style.top=Math.min(cy,window.innerHeight-120)+'px';
+}
+
+function hideMeter(){document.getElementById('multimeter-tip').classList.remove('show')}
+
+function quickValidate(){
+  // Lightweight version: just compute power reach without modifying game state
+  const kast=GS.components.find(c=>c.type==='groepenkast');
+  if(!kast)return new Map();
+  const brown=bfsColor(kast.row,kast.col,W_BROWN,['lamp','wandcontactdoos']);
+  const blue=bfsColor(kast.row,kast.col,W_BLUE,['lamp','wandcontactdoos']);
+  const green=bfsColor(kast.row,kast.col,W_GREEN,['lamp','wandcontactdoos']);
+  const black=new Set();
+  for(const sw of GS.components.filter(c=>c.type==='schakelaar')){
+    if(sw.state&&brown.has(ck(sw.row,sw.col))){
+      for(const k of bfsColor(sw.row,sw.col,W_BLACK,['lamp']))black.add(k);
+    }
+  }
+  const result=new Map();
+  const add=(set,w)=>{for(const k of set){if(!result.has(k))result.set(k,new Set());result.get(k).add(w)}};
+  add(brown,W_BROWN);add(blue,W_BLUE);add(green,W_GREEN);add(black,W_BLACK);
+  return result;
+}
+
+// ================================================
+// 11. UI MANAGEMENT
+// ================================================
+function selectWire(w){GS.activeTool=w;GS.toolMode='draw';updateToolBtns()}
+function selectEraser(){GS.toolMode='erase';updateToolBtns()}
+function selectMeter(){GS.toolMode='meter';updateToolBtns()}
+
+function updateToolBtns(){
+  document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active'));
+  if(GS.toolMode==='draw'){
+    const meta=WIRE_META[GS.activeTool];
+    if(meta)document.getElementById(meta.btnId).classList.add('active');
+  }else if(GS.toolMode==='erase'){
+    document.getElementById('btn-eraser').classList.add('active');
+  }else if(GS.toolMode==='meter'){
+    document.getElementById('btn-meter').classList.add('active');
+  }
+}
+
+function updateSidebar(){
+  const lvl=currentLevel();
+  document.getElementById('assignment-title').textContent=lvl.name;
+  document.getElementById('assignment-desc').textContent=lvl.description;
+  document.getElementById('concept-text').textContent=lvl.concept;
+  const stars=GS.bestStars[GS.currentLevel]||0;
+  updateStarDisplay(stars);
+  const t=lvl.starThresholds;
+  if(isStoringMode()){
+    document.getElementById('wire-target').textContent=`\u2605\u2605\u2605 \u2264 ${t.three} acties | \u2605\u2605 \u2264 ${t.two} acties`;
+  }else{
+    document.getElementById('wire-target').textContent=`\u2605\u2605\u2605 \u2264 ${t.three} draden | \u2605\u2605 \u2264 ${t.two} draden`;
+  }
+}
+
+function updateStarDisplay(stars){
+  document.getElementById('star-display').innerHTML=[1,2,3].map(i=>`<span class="star ${i<=stars?'earned':''}">\u2605</span>`).join('');
+}
+
+function updateTopBar(){
+  document.getElementById('level-num').textContent=GS.currentLevel+1;
+  const badge=document.getElementById('mode-badge');
+  if(isStoringMode()){badge.textContent='STORING';badge.className='mode-badge storing'}
+  else{badge.textContent='AANLEG';badge.className='mode-badge aanleg'}
+  updateWireCounter();updatePowerDisplay();updateActionCounter();
+}
+
+function updateWireCounter(){document.getElementById('wire-count').textContent=GS.wireCount}
+function updatePowerDisplay(){
+  const el=document.getElementById('power-state');
+  el.textContent=GS.isPowered?'AAN':'UIT';
+  el.classList.toggle('on',GS.isPowered);
+}
+
+function updateActionCounter(){
+  const el=document.getElementById('action-counter');
+  if(isStoringMode()){el.style.display='block';el.textContent=`Acties: ${GS.actionCount}`}
+  else{el.style.display='none'}
+}
+
+function buildLevelBtns(){
+  const ct=document.getElementById('level-buttons');ct.innerHTML='';ct.style.display='flex';ct.style.gap='3px';
+  for(let i=0;i<LEVELS.length;i++){
+    const btn=document.createElement('button');btn.className='level-btn';
+    btn.textContent=i+1;
+    if(LEVELS[i].mode==='storing')btn.title='Storing';
+    const locked=i>0&&!GS.bestStars[i-1];
+    if(i===GS.currentLevel){btn.classList.add('current');if(LEVELS[i].mode==='storing')btn.classList.add('storing-level')}
+    else if(locked)btn.classList.add('locked');
+    else if(GS.bestStars[i])btn.classList.add('completed');
+    btn.addEventListener('click',()=>{if(!locked)loadLevel(i)});
+    ct.appendChild(btn);
+  }
+}
+
+function showModal(result){
+  const ov=document.getElementById('modal-overlay'),box=document.getElementById('modal-box');
+  document.getElementById('modal-title').textContent=result.success?(isStoringMode()?'Storing Opgelost!':'Circuit Compleet!'):'Niet Gelukt';
+  box.className=result.success?'success':'failure';
+  document.getElementById('modal-stars').innerHTML=result.success?[1,2,3].map(i=>`<span class="${i<=result.stars?'star-on':'star-off'}">\u2605</span>`).join(' '):'';
+  document.getElementById('modal-message').textContent=result.message;
+  document.getElementById('modal-stats').textContent=result.success?(isStoringMode()?`Acties: ${GS.actionCount}`:`Draden: ${GS.wireCount}`):'';
+  let btns='';
+  if(result.success){
+    btns='<button class="modal-btn modal-btn-secondary" onclick="hideModal()">OK</button>';
+    if(GS.currentLevel<LEVELS.length-1)btns+=' <button class="modal-btn modal-btn-primary" onclick="hideModal();loadLevel(GS.currentLevel+1)">Volgend Level \u2192</button>';
+    else btns='<button class="modal-btn modal-btn-primary" onclick="hideModal()">Geweldig!</button>';
+  }else{
+    btns='<button class="modal-btn modal-btn-primary" onclick="hideModal()">Probeer Opnieuw</button>';
+    if(isStoringMode()&&currentLevel().hintText)btns+=' <button class="modal-btn modal-btn-secondary" onclick="showHint()">Hint</button>';
+  }
+  document.getElementById('modal-actions').innerHTML=btns;
+  ov.classList.add('show');
+}
+
+function hideModal(){document.getElementById('modal-overlay').classList.remove('show')}
+
+function showHint(){
+  const lvl=currentLevel();
+  if(lvl.hintText){
+    document.getElementById('modal-message').textContent='Hint: '+lvl.hintText;
+  }
+}
+
+// ================================================
+// 12. SCORING
+// ================================================
+function calculateStars(){
+  const lvl=currentLevel(),t=lvl.starThresholds;
+  const val=isStoringMode()?GS.actionCount:GS.wireCount;
+  if(val<=t.three)return 3;
+  if(val<=t.two)return 2;
+  return 1;
+}
+
+function testCircuit(){
+  const result=validateCircuit();
+  if(result.success){
+    const prev=GS.bestStars[GS.currentLevel]||0;
+    if(result.stars>prev)GS.bestStars[GS.currentLevel]=result.stars;
+    saveProgress();buildLevelBtns();updateStarDisplay(GS.bestStars[GS.currentLevel]);
+    spawnCelebration();
+    setTimeout(()=>showModal(result),700);
+  }else{
+    showModal(result);
+  }
+}
+
+function saveProgress(){try{localStorage.setItem('circuitcity_v2',JSON.stringify(GS.bestStars))}catch(e){}}
+function loadProgress(){try{const d=JSON.parse(localStorage.getItem('circuitcity_v2'));if(Array.isArray(d))GS.bestStars=d}catch(e){}}
+
+// ================================================
+// 13. LEVEL LOADING & INIT
+// ================================================
+function loadLevel(index){
+  if(index<0||index>=LEVELS.length)return;
+  GS.currentLevel=index;
+  const lvl=LEVELS[index];
+  GS.grid=createGrid(lvl.gridWidth,lvl.gridHeight);
+  GS.gridWidth=lvl.gridWidth;GS.gridHeight=lvl.gridHeight;
+  GS.components=JSON.parse(JSON.stringify(lvl.components));
+  GS.wireCount=0;GS.actionCount=0;
+  GS.isPowered=false;GS.poweredCells=new Map();
+  GS.particles=[];GS.celebrationParticles=[];GS.particlePaths=[];
+  GS.particleSpawnTimer=0;GS.animationActive=false;GS.blinkPhase=0;
+  GS.meterResult=null;hideMeter();
+
+  // Place preplaced wires for storing levels
+  if(lvl.preplacedWires){
+    for(const pw of lvl.preplacedWires){
+      for(const w of ALL_WIRES){
+        if(pw.w&w)cellAdd(pw.r,pw.c,w);
+      }
+    }
+  }
+
+  // Set available wires
+  const avail=lvl.availableWires||ALL_WIRES;
+  for(const w of ALL_WIRES){
+    const meta=WIRE_META[w];
+    const btn=document.getElementById(meta.btnId);
+    btn.style.display=avail.includes(w)?'':'none';
+  }
+  // Show/hide meter button
+  document.getElementById('btn-meter').style.display=isStoringMode()?'':'none';
+
+  // Default to first available wire
+  GS.activeTool=avail[0];GS.toolMode='draw';updateToolBtns();
+
+  resizeCanvas();updateSidebar();updateTopBar();buildLevelBtns();
+}
+
+function resetLevel(){loadLevel(GS.currentLevel)}
+
+function gameLoop(ts){
+  const dt=Math.min((ts-GS.lastFrameTime)/1000,.1);
+  GS.lastFrameTime=ts;
+  GS.glowPhase+=dt*3;
+  if(GS.blinkPhase>0)GS.blinkPhase+=dt;
+  spawnParticles(dt);updateParticles(dt);
+
+  const ctx=GS.ctx;
+  ctx.clearRect(0,0,GS.canvas.width,GS.canvas.height);
+  drawGrid();drawWires();drawHoverPreview();
+  for(const comp of GS.components)drawComponent(comp);
+  drawComponentConnections();
+  drawParticles();
+  requestAnimationFrame(gameLoop);
+}
+
+function init(){
+  GS.canvas=document.getElementById('game-canvas');
+  GS.ctx=GS.canvas.getContext('2d');
+  loadProgress();initInput();loadLevel(0);
+
+  window.addEventListener('resize',resizeCanvas);
+  document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target.id==='modal-overlay')hideModal()});
+
+  // Wire tool buttons
+  document.getElementById('btn-brown').addEventListener('click',()=>selectWire(W_BROWN));
+  document.getElementById('btn-blue').addEventListener('click',()=>selectWire(W_BLUE));
+  document.getElementById('btn-green').addEventListener('click',()=>selectWire(W_GREEN));
+  document.getElementById('btn-black').addEventListener('click',()=>selectWire(W_BLACK));
+  document.getElementById('btn-eraser').addEventListener('click',selectEraser);
+  document.getElementById('btn-meter').addEventListener('click',selectMeter);
+  document.getElementById('btn-reset').addEventListener('click',resetLevel);
+  document.getElementById('btn-test').addEventListener('click',testCircuit);
+
+  document.addEventListener('keydown',e=>{
+    if(e.key==='1')selectWire(W_BROWN);
+    if(e.key==='2')selectWire(W_BLUE);
+    if(e.key==='3')selectWire(W_GREEN);
+    if(e.key==='4')selectWire(W_BLACK);
+    if(e.key==='e'||e.key==='5')selectEraser();
+    if(e.key==='m')selectMeter();
+    if(e.key==='r')resetLevel();
+    if(e.key==='Enter'||e.key==='t')testCircuit();
+    if(e.key==='Escape')hideModal();
+  });
+
+  GS.lastFrameTime=performance.now();
+  requestAnimationFrame(gameLoop);
+}
+
+init();
+</script>
+</body>
+</html>
