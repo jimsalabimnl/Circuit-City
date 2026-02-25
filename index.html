@@ -145,6 +145,10 @@ body{background:#0a0e1a;color:#e2e8f0;font-family:'Exo 2',sans-serif;display:gri
     <div id="star-display"><span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star">&#9733;</span></div>
     <div id="wire-target"></div>
     <div id="action-counter"></div>
+    <div id="tutorial-bar" style="display:none">
+      <p id="tutorial-msg" style="font-size:12px;line-height:1.5;color:#fbbf24;margin-bottom:6px"></p>
+      <button id="btn-tutorial-next" class="modal-btn modal-btn-primary" style="font-size:11px;padding:4px 12px;display:none">Volgende</button>
+    </div>
   </div>
   <div id="game-area"><canvas id="game-canvas"></canvas></div>
 </div>
@@ -185,6 +189,20 @@ const DIRS=[[-1,0],[1,0],[0,-1],[0,1]];
 // 2. LEVEL DATA
 // ================================================
 const LEVELS=[
+  // --- TUTORIAL ---
+  {id:0,name:'Tutorial',mode:'aanleg',gridWidth:6,gridHeight:5,isTutorial:true,
+   description:'Welkom bij Circuit City! Leer hoe je draden legt om een circuit te bouwen.',
+   concept:'Een circuit heeft altijd een heenweg (fase) en een terugweg (nul) nodig. Zonder gesloten circuit geen stroom!',
+   availableWires:[W_BROWN,W_BLUE],requireEarth:false,
+   components:[{type:'groepenkast',row:2,col:0,state:true},{type:'lamp',row:2,col:5,state:false}],
+   starThresholds:{three:8,two:12},
+   tutorialSteps:[
+     {msg:'Dit is de groepenkast (links). Hier begint alle stroom. Klik "Volgende" om door te gaan.',action:'next'},
+     {msg:'Leg een BRUINE draad (fase) van de groepenkast naar de lamp. Klik en sleep over de cellen.',action:'drawBrown',targetWire:W_BROWN},
+     {msg:'Leg nu een BLAUWE draad (nul) terug naar de groepenkast. Stroom heeft altijd een retourpad nodig!',action:'drawBlue',targetWire:W_BLUE},
+     {msg:'Druk op "Test Circuit" om te controleren of je circuit werkt!',action:'test'}
+   ]},
+
   // --- AANLEG LEVELS ---
   {id:1,name:'Fase en Nul',mode:'aanleg',gridWidth:8,gridHeight:6,
    description:'Verbind de groepenkast met de lamp. Leg een bruine draad (fase) HEEN en een blauwe draad (nul) TERUG.',
@@ -313,9 +331,13 @@ const GS={
   currentLevel:0,grid:[],gridWidth:0,gridHeight:0,components:[],
   activeTool:W_BROWN,toolMode:'draw', // 'draw','erase','meter'
   isDrawing:false,lastDrawCell:null,
+  wireStart:null, // {row,col} start of drag
+  previewPath:[], // [{row,col}] L-shaped preview during drag
   isPowered:false,poweredCells:new Map(), // Map<cellKey, Set<wireColor>>
   wireCount:0,bestStars:[],hoverCell:null,
   actionCount:0,
+  // Tutorial
+  tutorialStep:0,
   // Multimeter
   meterResult:null,meterPos:null,
   // Animation
@@ -626,11 +648,23 @@ function drawOffsetSegments(ctx,center,nb,s,off){
 }
 
 function drawHoverPreview(){
-  if(GS.toolMode!=='draw'||!GS.hoverCell||GS.isDrawing)return;
+  const ctx=GS.ctx,s=GS.cellSize;
+  // Draw L-shaped preview during drag
+  if(GS.isDrawing&&GS.previewPath.length>0){
+    const meta=GS.toolMode==='erase'?{hex:'#ef4444'}:WIRE_META[GS.activeTool];
+    if(!meta)return;
+    for(const p of GS.previewPath){
+      if(getComponentAt(p.row,p.col))continue;
+      ctx.fillStyle=meta.hex+'40';
+      ctx.beginPath();ctx.roundRect(p.col*s+2,p.row*s+2,s-4,s-4,3);ctx.fill();
+    }
+    return;
+  }
+  // Hover highlight when not dragging
+  if(GS.toolMode!=='draw'||!GS.hoverCell)return;
   const{row,col}=GS.hoverCell;
   if(!isValidCell(row,col)||getComponentAt(row,col))return;
   const meta=WIRE_META[GS.activeTool];if(!meta)return;
-  const ctx=GS.ctx,s=GS.cellSize;
   ctx.fillStyle=meta.hex+'30';
   ctx.beginPath();ctx.roundRect(col*s+2,row*s+2,s-4,s-4,3);ctx.fill();
 }
@@ -908,14 +942,48 @@ function spawnCelebration(){
 }
 
 // ================================================
-// 9. INPUT HANDLING
+// 9. INPUT HANDLING (click-and-drag with L-shaped preview)
 // ================================================
+function calcPath(from,to){
+  // L-shaped: horizontal first, then vertical
+  const path=[];
+  const dr=to.row>from.row?1:-1,dc=to.col>from.col?1:-1;
+  let c=from.col;
+  while(c!==to.col){c+=dc;path.push({row:from.row,col:c})}
+  let r=from.row;
+  while(r!==to.row){r+=dr;path.push({row:r,col:to.col})}
+  return path;
+}
+
+function applyPath(){
+  if(!GS.wireStart||!GS.previewPath.length)return;
+  let changed=false;
+  if(GS.toolMode==='draw'){
+    for(const p of GS.previewPath){
+      if(getComponentAt(p.row,p.col))continue;
+      if(!cellHas(p.row,p.col,GS.activeTool)){
+        cellAdd(p.row,p.col,GS.activeTool);changed=true;
+      }
+    }
+  }else if(GS.toolMode==='erase'){
+    for(const p of GS.previewPath){
+      if(getComponentAt(p.row,p.col))continue;
+      if(GS.grid[p.row][p.col]){cellRemoveAll(p.row,p.col);changed=true}
+    }
+  }
+  if(changed){
+    clearPowerState();updateWireCounter();
+    if(isStoringMode()){GS.actionCount++;updateActionCounter()}
+    tutorialStepCheck();
+  }
+}
+
 function initInput(){
   const cv=GS.canvas;
 
   cv.addEventListener('mousedown',e=>{
     const rc=pixelToGrid(e.clientX-cv.getBoundingClientRect().left,e.clientY-cv.getBoundingClientRect().top);
-    ptrDown(rc.row,rc.col,e);
+    ptrDown(rc.row,rc.col);
   });
   cv.addEventListener('mousemove',e=>{
     const rect=cv.getBoundingClientRect();
@@ -923,10 +991,10 @@ function initInput(){
     GS.hoverCell=isValidCell(rc.row,rc.col)?rc:null;
     const comp=getComponentAt(rc.row,rc.col);
     cv.style.cursor=comp&&comp.type==='schakelaar'?'pointer':GS.toolMode==='meter'?'help':GS.toolMode==='erase'?'grab':'crosshair';
-    if(GS.isDrawing)ptrMove(rc.row,rc.col);
+    if(GS.isDrawing&&GS.wireStart)ptrMove(rc.row,rc.col);
   });
   cv.addEventListener('mouseup',()=>ptrUp());
-  cv.addEventListener('mouseleave',()=>{GS.hoverCell=null;ptrUp();hideMeter()});
+  cv.addEventListener('mouseleave',()=>{GS.hoverCell=null;GS.previewPath=[];if(GS.isDrawing)ptrUp();hideMeter()});
 
   cv.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0],rect=cv.getBoundingClientRect();
     ptrDown(...Object.values(pixelToGrid(t.clientX-rect.left,t.clientY-rect.top)))},{passive:false});
@@ -952,45 +1020,28 @@ function ptrDown(row,col){
   if(comp&&comp.type==='schakelaar'){
     comp.state=!comp.state;clearPowerState();
     if(isStoringMode()){GS.actionCount++;updateActionCounter()}
+    tutorialStepCheck();
     return;
   }
 
   if(comp)return;
 
-  GS.isDrawing=true;GS.lastDrawCell={row,col};
-
-  if(GS.toolMode==='draw'){
-    if(!cellHas(row,col,GS.activeTool)){
-      cellAdd(row,col,GS.activeTool);clearPowerState();updateWireCounter();
-      if(isStoringMode()){GS.actionCount++;updateActionCounter()}
-    }
-  }else if(GS.toolMode==='erase'){
-    if(GS.grid[row][col]){
-      cellRemoveAll(row,col);clearPowerState();updateWireCounter();
-      if(isStoringMode()){GS.actionCount++;updateActionCounter()}
-    }
-  }
+  GS.isDrawing=true;
+  GS.wireStart={row,col};
+  GS.previewPath=[];
 }
 
 function ptrMove(row,col){
-  if(!GS.isDrawing||!isValidCell(row,col))return;
-  if(GS.lastDrawCell&&GS.lastDrawCell.row===row&&GS.lastDrawCell.col===col)return;
-  if(getComponentAt(row,col))return;
-  GS.lastDrawCell={row,col};
-  if(GS.toolMode==='draw'){
-    if(!cellHas(row,col,GS.activeTool)){
-      cellAdd(row,col,GS.activeTool);clearPowerState();updateWireCounter();
-      if(isStoringMode()){GS.actionCount++;updateActionCounter()}
-    }
-  }else if(GS.toolMode==='erase'){
-    if(GS.grid[row][col]){
-      cellRemoveAll(row,col);clearPowerState();updateWireCounter();
-      if(isStoringMode()){GS.actionCount++;updateActionCounter()}
-    }
-  }
+  if(!GS.isDrawing||!GS.wireStart||!isValidCell(row,col))return;
+  GS.previewPath=calcPath(GS.wireStart,{row,col});
 }
 
-function ptrUp(){GS.isDrawing=false;GS.lastDrawCell=null}
+function ptrUp(){
+  if(GS.isDrawing&&GS.wireStart&&GS.previewPath.length){
+    applyPath();
+  }
+  GS.isDrawing=false;GS.wireStart=null;GS.previewPath=[];
+}
 
 // ================================================
 // 10. MULTIMETER
@@ -1073,11 +1124,14 @@ function updateSidebar(){
   document.getElementById('concept-text').textContent=lvl.concept;
   const stars=GS.bestStars[GS.currentLevel]||0;
   updateStarDisplay(stars);
-  const t=lvl.starThresholds;
-  if(isStoringMode()){
+  if(lvl.isTutorial){
+    document.getElementById('wire-target').textContent='Volg de stappen in de tutorial';
+  }else if(isStoringMode()){
+    const t=lvl.starThresholds;
     document.getElementById('wire-target').textContent=`\u2605\u2605\u2605 \u2264 ${t.three} acties | \u2605\u2605 \u2264 ${t.two} acties`;
   }else{
-    document.getElementById('wire-target').textContent=`\u2605\u2605\u2605 \u2264 ${t.three} draden | \u2605\u2605 \u2264 ${t.two} draden`;
+    const opt=calcOptimalWires();
+    document.getElementById('wire-target').textContent=`\u2605\u2605\u2605 \u2264 ${Math.ceil(opt*1.2)} draden | \u2605\u2605 \u2264 ${Math.ceil(opt*1.7)} draden`;
   }
 }
 
@@ -1086,7 +1140,7 @@ function updateStarDisplay(stars){
 }
 
 function updateTopBar(){
-  document.getElementById('level-num').textContent=GS.currentLevel+1;
+  document.getElementById('level-num').textContent=currentLevel().isTutorial?'T':GS.currentLevel;
   const badge=document.getElementById('mode-badge');
   if(isStoringMode()){badge.textContent='STORING';badge.className='mode-badge storing'}
   else{badge.textContent='AANLEG';badge.className='mode-badge aanleg'}
@@ -1110,8 +1164,9 @@ function buildLevelBtns(){
   const ct=document.getElementById('level-buttons');ct.innerHTML='';ct.style.display='flex';ct.style.gap='3px';
   for(let i=0;i<LEVELS.length;i++){
     const btn=document.createElement('button');btn.className='level-btn';
-    btn.textContent=i+1;
+    btn.textContent=LEVELS[i].isTutorial?'T':(i);
     if(LEVELS[i].mode==='storing')btn.title='Storing';
+    if(LEVELS[i].isTutorial)btn.title='Tutorial';
     const locked=i>0&&!GS.bestStars[i-1];
     if(i===GS.currentLevel){btn.classList.add('current');if(LEVELS[i].mode==='storing')btn.classList.add('storing-level')}
     else if(locked)btn.classList.add('locked');
@@ -1151,13 +1206,124 @@ function showHint(){
 }
 
 // ================================================
-// 12. SCORING
+// 12. TUTORIAL SYSTEM
 // ================================================
+function isTutorialLevel(){const lvl=currentLevel();return lvl&&lvl.isTutorial}
+
+function renderTutorialStep(){
+  const bar=document.getElementById('tutorial-bar');
+  const msg=document.getElementById('tutorial-msg');
+  const btn=document.getElementById('btn-tutorial-next');
+  if(!isTutorialLevel()){bar.style.display='none';return}
+  const lvl=currentLevel();
+  const steps=lvl.tutorialSteps;
+  if(GS.tutorialStep>=steps.length){bar.style.display='none';return}
+  bar.style.display='block';
+  const step=steps[GS.tutorialStep];
+  msg.textContent=step.msg;
+  btn.style.display=step.action==='next'?'inline-block':'none';
+}
+
+function tutorialStepCheck(){
+  if(!isTutorialLevel())return;
+  const lvl=currentLevel();
+  const steps=lvl.tutorialSteps;
+  if(GS.tutorialStep>=steps.length)return;
+  const step=steps[GS.tutorialStep];
+  // Check if the wire-drawing steps are complete via BFS connectivity
+  if(step.action==='drawBrown'){
+    const kast=GS.components.find(c=>c.type==='groepenkast');
+    const lamp=GS.components.find(c=>c.type==='lamp');
+    if(kast&&lamp){
+      const reach=bfsColor(kast.row,kast.col,W_BROWN,['lamp']);
+      if(reach.has(ck(lamp.row,lamp.col))){GS.tutorialStep++;renderTutorialStep()}
+    }
+  }else if(step.action==='drawBlue'){
+    const kast=GS.components.find(c=>c.type==='groepenkast');
+    const lamp=GS.components.find(c=>c.type==='lamp');
+    if(kast&&lamp){
+      const reach=bfsColor(kast.row,kast.col,W_BLUE,['lamp']);
+      if(reach.has(ck(lamp.row,lamp.col))){GS.tutorialStep++;renderTutorialStep()}
+    }
+  }
+  // 'test' step is handled by testCircuit
+}
+
+function advanceTutorial(){
+  if(!isTutorialLevel())return;
+  GS.tutorialStep++;
+  renderTutorialStep();
+  // Auto-select the right tool for next step
+  const lvl=currentLevel();
+  if(GS.tutorialStep<lvl.tutorialSteps.length){
+    const step=lvl.tutorialSteps[GS.tutorialStep];
+    if(step.targetWire)selectWire(step.targetWire);
+  }
+}
+
+// ================================================
+// 13. SCORING
+// ================================================
+function bfsDist(r1,c1,r2,c2){
+  // BFS shortest Manhattan path on grid (ignoring existing wires)
+  const visited=new Set();const queue=[{r:r1,c:c1,d:0}];
+  visited.add(ck(r1,c1));
+  while(queue.length){
+    const cur=queue.shift();
+    if(cur.r===r2&&cur.c===c2)return cur.d;
+    for(const[dr,dc]of DIRS){
+      const nr=cur.r+dr,nc=cur.c+dc,key=ck(nr,nc);
+      if(!isValidCell(nr,nc)||visited.has(key))continue;
+      visited.add(key);queue.push({r:nr,c:nc,d:cur.d+1});
+    }
+  }
+  return 999;
+}
+
+function calcOptimalWires(){
+  // Estimate minimum wire cells: sum of BFS distances between consecutive components
+  const lvl=currentLevel();
+  const comps=GS.components;
+  if(comps.length<2)return 10;
+  let total=0;
+  // Count wires needed per color
+  const kast=comps.find(c=>c.type==='groepenkast');
+  if(!kast)return 10;
+  const endpoints=comps.filter(c=>c.type!=='groepenkast');
+  // Each endpoint needs at least brown+blue path from kast (via centraaldoos if present)
+  const cdoos=comps.find(c=>c.type==='centraaldoos');
+  const colorCount=lvl.availableWires?lvl.availableWires.length:2;
+  for(const ep of endpoints){
+    if(cdoos&&ep!==cdoos){
+      // Path: kast→cdoos + cdoos→ep, times number of wire colors needed
+      const d1=bfsDist(kast.row,kast.col,cdoos.row,cdoos.col);
+      const d2=bfsDist(cdoos.row,cdoos.col,ep.row,ep.col);
+      // Don't double-count kast→cdoos for multiple endpoints
+      total+=d2*Math.min(colorCount,ep.type==='schakelaar'?1:colorCount);
+    }else{
+      total+=bfsDist(kast.row,kast.col,ep.row,ep.col)*Math.min(colorCount,2);
+    }
+  }
+  if(cdoos){
+    total+=bfsDist(kast.row,kast.col,cdoos.row,cdoos.col)*colorCount;
+  }
+  return Math.max(total,comps.length);
+}
+
 function calculateStars(){
-  const lvl=currentLevel(),t=lvl.starThresholds;
-  const val=isStoringMode()?GS.actionCount:GS.wireCount;
-  if(val<=t.three)return 3;
-  if(val<=t.two)return 2;
+  const lvl=currentLevel();
+  if(lvl.isTutorial)return 3; // Tutorial always 3 stars
+  if(isStoringMode()){
+    const t=lvl.starThresholds;
+    if(GS.actionCount<=t.three)return 3;
+    if(GS.actionCount<=t.two)return 2;
+    return 1;
+  }
+  // Aanleg: based on ratio to optimal
+  const optimal=calcOptimalWires();
+  const ratio=GS.wireCount/Math.max(optimal,1);
+  if(ratio<=1.2)return 3;
+  if(ratio<=1.7)return 2;
   return 1;
 }
 
@@ -1174,8 +1340,12 @@ function testCircuit(){
   }
 }
 
-function saveProgress(){try{localStorage.setItem('circuitcity_v2',JSON.stringify(GS.bestStars))}catch(e){}}
-function loadProgress(){try{const d=JSON.parse(localStorage.getItem('circuitcity_v2'));if(Array.isArray(d))GS.bestStars=d}catch(e){}}
+function saveProgress(){try{localStorage.setItem('cc_v3',JSON.stringify(GS.bestStars))}catch(e){}}
+function loadProgress(){
+  try{const d=JSON.parse(localStorage.getItem('cc_v3'));if(Array.isArray(d))GS.bestStars=d}catch(e){}
+  // Ensure array covers all levels
+  while(GS.bestStars.length<LEVELS.length)GS.bestStars.push(0);
+}
 
 // ================================================
 // 13. LEVEL LOADING & INIT
@@ -1187,7 +1357,8 @@ function loadLevel(index){
   GS.grid=createGrid(lvl.gridWidth,lvl.gridHeight);
   GS.gridWidth=lvl.gridWidth;GS.gridHeight=lvl.gridHeight;
   GS.components=JSON.parse(JSON.stringify(lvl.components));
-  GS.wireCount=0;GS.actionCount=0;
+  GS.wireCount=0;GS.actionCount=0;GS.tutorialStep=0;
+  GS.wireStart=null;GS.previewPath=[];
   GS.isPowered=false;GS.poweredCells=new Map();
   GS.particles=[];GS.celebrationParticles=[];GS.particlePaths=[];
   GS.particleSpawnTimer=0;GS.animationActive=false;GS.blinkPhase=0;
@@ -1215,7 +1386,7 @@ function loadLevel(index){
   // Default to first available wire
   GS.activeTool=avail[0];GS.toolMode='draw';updateToolBtns();
 
-  resizeCanvas();updateSidebar();updateTopBar();buildLevelBtns();
+  resizeCanvas();updateSidebar();updateTopBar();buildLevelBtns();renderTutorialStep();
 }
 
 function resetLevel(){loadLevel(GS.currentLevel)}
@@ -1253,6 +1424,7 @@ function init(){
   document.getElementById('btn-meter').addEventListener('click',selectMeter);
   document.getElementById('btn-reset').addEventListener('click',resetLevel);
   document.getElementById('btn-test').addEventListener('click',testCircuit);
+  document.getElementById('btn-tutorial-next').addEventListener('click',advanceTutorial);
 
   document.addEventListener('keydown',e=>{
     if(e.key==='1')selectWire(W_BROWN);
