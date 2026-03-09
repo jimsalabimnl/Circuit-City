@@ -416,30 +416,69 @@ function drawComponent(comp){
 }
 
 function drawGroepenkast(ctx,x,y,s,comp){
-  ctx.fillStyle='#1e293b';
-  ctx.beginPath();ctx.roundRect(x-s/2+2,y-s/2+2,s-4,s-4,4);ctx.fill();
   const pw=comp.powered;
-  if(pw){ctx.shadowColor='#22c55e';ctx.shadowBlur=8+4*Math.sin(GS.glowPhase)}
-  ctx.strokeStyle=pw?'#22c55e':'#475569';ctx.lineWidth=2;
-  ctx.beginPath();ctx.roundRect(x-s/2+2,y-s/2+2,s-4,s-4,4);ctx.stroke();
+  const glowInt=.4+.6*Math.sin(GS.glowPhase);
+
+  // Outer case shadow (depth)
+  ctx.fillStyle='rgba(0,0,0,0.4)';
+  ctx.beginPath();ctx.roundRect(x-s/2+3,y-s/2+3,s-6,s-6,5);ctx.fill();
+
+  // Main case body (gradient effect with two fills)
+  const g1=ctx.createLinearGradient(x-s/2,y-s/2,x+s/2,y+s/2);
+  g1.addColorStop(0,'#334155');g1.addColorStop(1,'#0f172a');
+  ctx.fillStyle=g1;
+  ctx.beginPath();ctx.roundRect(x-s/2+1,y-s/2+1,s-2,s-2,5);ctx.fill();
+
+  // Neon glow border when powered
+  if(pw){
+    ctx.strokeStyle=`rgba(34,197,94,${.3+.4*glowInt})`;
+    ctx.lineWidth=4;
+    ctx.beginPath();ctx.roundRect(x-s/2+1,y-s/2+1,s-2,s-2,5);ctx.stroke();
+    ctx.shadowColor='#22c55e';ctx.shadowBlur=12*glowInt;
+    ctx.strokeStyle='#22c55e';ctx.lineWidth=2;
+    ctx.beginPath();ctx.roundRect(x-s/2+1,y-s/2+1,s-2,s-2,5);ctx.stroke();
+  }else{
+    ctx.strokeStyle='#475569';ctx.lineWidth=2;
+    ctx.beginPath();ctx.roundRect(x-s/2+1,y-s/2+1,s-2,s-2,5);ctx.stroke();
+  }
   ctx.shadowBlur=0;
-  // Automaat symbol
+
+  // Top panel (darker)
   ctx.fillStyle='#0f172a';
-  const bw=s*.22,bh=s*.3;
-  ctx.fillRect(x-bw/2,y-bh/2-s*.05,bw,bh);
-  ctx.strokeStyle='#475569';ctx.lineWidth=1;ctx.strokeRect(x-bw/2,y-bh/2-s*.05,bw,bh);
-  // Switch in automaat
-  ctx.strokeStyle=pw?'#22c55e':'#ef4444';ctx.lineWidth=2;
-  ctx.beginPath();ctx.moveTo(x,y-s*.05+bh*.3);ctx.lineTo(x,y-s*.05-bh*.2);ctx.stroke();
-  // Terminal dots
-  const dx=x+s/2-7,dotR=s*.05;
-  ctx.fillStyle='#8B4513';ctx.beginPath();ctx.arc(dx,y-s*.18,dotR,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#2563eb';ctx.beginPath();ctx.arc(dx,y,dotR,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#22c55e';ctx.beginPath();ctx.arc(dx,y+s*.18,dotR,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.roundRect(x-s/2+2,y-s/2+2,s-4,s*.35,3);ctx.fill();
+
+  // Terminal row (brass-colored contacts)
+  const ty=y-s*.15,contactR=s*.06;
+  // Brown (Phase)
+  ctx.fillStyle='#d4a574';ctx.beginPath();ctx.arc(x-s*.25,ty,contactR,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#a68250';ctx.lineWidth=1;ctx.stroke();
+  // Blue (Neutral)
+  ctx.fillStyle='#5b9ebd';ctx.beginPath();ctx.arc(x,ty,contactR,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#2a5f7f';ctx.lineWidth=1;ctx.stroke();
+  // Green/Yellow (Earth)
+  ctx.fillStyle='#7ec850';ctx.beginPath();ctx.arc(x+s*.25,ty,contactR,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#4a8a2a';ctx.lineWidth=1;ctx.stroke();
+
+  // Automaat switches below terminals
+  const sw_y=y+s*.05,sw_h=s*.2,sw_w=s*.15;
+  for(let i=0;i<3;i++){
+    const sx=x-s*.25+i*s*.25;
+    // Switch body
+    ctx.fillStyle='#1e293b';ctx.beginPath();ctx.roundRect(sx-sw_w/2,sw_y,sw_w,sw_h,2);ctx.fill();
+    ctx.strokeStyle=pw?'#22c55e':'#64748b';ctx.lineWidth=1;ctx.stroke();
+    // Toggle indicator
+    ctx.fillStyle=pw?'#22c55e':'#ef4444';
+    ctx.beginPath();ctx.arc(sx,sw_y+sw_h*.6,sw_w*.25,0,Math.PI*2);ctx.fill();
+  }
+
   // Label
-  ctx.fillStyle='#94a3b8';ctx.font=`${Math.max(7,s*.12)}px 'Share Tech Mono',monospace`;
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('KAST',x,y+s/2-3);
+  ctx.fillStyle='#cbd5e1';ctx.font=`bold ${Math.max(8,s*.11)}px 'Share Tech Mono',monospace`;
+  ctx.textAlign='center';ctx.textBaseline='top';
+  ctx.fillText('GROEPENKAST',x,y+s*.38);
+
+  // Model/brand text (smaller)
+  ctx.fillStyle='#64748b';ctx.font=`${Math.max(6,s*.08)}px 'Share Tech Mono',monospace`;
+  ctx.fillText('NEN 1010',x,y+s/2-8);
 }
 
 function drawCentraaldoos(ctx,x,y,s,comp){
